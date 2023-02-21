@@ -7,7 +7,7 @@ def get_patient_result_from_ai(symptoms):
     Get the result from AI for a patient 
     """
     try:
-        openai.api_key="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"
+        openai.api_key=""
 
         response = openai.Completion.create(
         model="text-davinci-003",
