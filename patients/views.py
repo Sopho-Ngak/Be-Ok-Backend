@@ -19,13 +19,13 @@ from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
 
 
 class PatientViewSet(viewsets.ModelViewSet):
-    queryset = Patient.objects.all().order_by('name')
+    queryset = Patient.objects.all().order_by('user__username')
     serializer_class = PatientSerializer
 
-    def get_queryset(self):
-        if self.request.GET.get('name'):
-            return Patient.objects.filter(name__icontains=self.request.Get.get('name'))
-        return self.queryset
+    # def get_queryset(self):
+    #     if self.request.GET.get('name'):
+    #         return Patient.objects.filter(name__icontains=self.request.Get.get('name'))
+    #     return self.queryset
 
     def get_permissions(self):
         return [AllowAny()]
