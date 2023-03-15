@@ -12,7 +12,7 @@ from accounts.models import (User, VerificationCode)
 from utils.generate_code import get_random_code
 
 
-class UserLogin(viewsets.ViewSet):
+class UserLogin(viewsets.ModelViewSet):
     permission_classes = (AllowAny,)
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -22,7 +22,7 @@ class UserLogin(viewsets.ViewSet):
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
     serializer_class = UserCreateSerializer
 

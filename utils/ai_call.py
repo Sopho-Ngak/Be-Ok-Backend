@@ -7,20 +7,20 @@ def get_patient_result_from_ai(symptoms):
     Get the result from AI for a patient 
     """
     try:
-        openai.api_key=""
+        openai.api_key = os.getenv("API_KEY")
 
-        response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=symptoms,
-        temperature=1,
-        max_tokens=3028,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages = [
+                {
+                    "role":"system", "content":"Your are a good specialist doctor",
+                    "role": "user", "content": symptoms,
+                }
+            ]
         )
 
-        return response.choices[0].text
+        return str(response["choices"][0]["message"]["content"])
     except Exception as e:
-        print("####################################\n")
-        print(e)
+        with open("ai_error.log", "a") as f:
+            f.write('\n'+str(e))
         return None

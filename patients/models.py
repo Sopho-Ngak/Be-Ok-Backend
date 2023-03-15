@@ -43,6 +43,9 @@ class PatientReport(models.Model):
 
     def __str__(self):
         return str(self.user)
+    
+    class Meta:
+        ordering = ['-created_at']
 
 class PatientDependentReport(models.Model):
     FRIEND = 'friend'
