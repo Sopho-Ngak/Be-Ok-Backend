@@ -9,3 +9,7 @@
 .env
 db.sqlite3
 ai_error.log
+# migrations but not the __init__.py
+**/migrations/*
+!/**/migrations/__init__.py
+*/migrations/*

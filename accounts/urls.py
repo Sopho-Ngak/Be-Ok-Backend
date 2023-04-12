@@ -10,7 +10,7 @@ from accounts.views import (UserViewSet, UserLogin)
 router = routers.DefaultRouter()
 
 
-router.register('user', UserViewSet, basename='user')
+router.register('users', UserViewSet, basename='user')
 router.register('login', UserLogin, basename='user-login')
 
 urlpatterns = [

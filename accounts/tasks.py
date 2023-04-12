@@ -22,7 +22,7 @@ def send_activation_code_via_email(id):
     to = user_code.user.email
     context = {
         'code': user_code.code,
-        'user': user_code.user
+        'user': user_code.user.full_name,
     }
     html_content = render_to_string('accounts/activation_email.html', context=context)
     text_content = strip_tags(html_content)

@@ -10,6 +10,7 @@ from accounts.serializers import (
     CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer)
 from accounts.models import (User, VerificationCode)
 from utils.generate_code import get_random_code
+from accounts.tasks import send_activation_code_via_email
 
 
 class UserLogin(viewsets.ModelViewSet):
@@ -22,7 +23,7 @@ class UserLogin(viewsets.ModelViewSet):
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
-class UserViewSet(viewsets.ViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     serializer_class = UserCreateSerializer
 
@@ -42,13 +43,26 @@ class UserViewSet(viewsets.ViewSet):
             self.permission_classes = (AllowAny,)
         if self.action == 'edit_profile':
             self.permission_classes = (IsAuthenticated,)
+        if self.action == 'resend_verification_code':
+            self.permission_classes = (AllowAny,)
         return super().get_permissions()
 
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            serializer.save()
+            serializer.instance.set_password(serializer.validated_data['password'])
+            serializer.instance.save()
+            return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
+        
+        # Custom error message to remove array from error message
+        error_data = {}
+        if serializer.errors.get('email'):
+            error_data['email'] = serializer.errors.get('email')[0]
+        if serializer.errors.get('phone_number'):
+            error_data['phone_number'] = serializer.errors.get('phone_number')[0]
+            
+        return Response(error_data, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'], url_path='account-activation')
     def account_activation(self, request):
@@ -58,6 +72,9 @@ class UserViewSet(viewsets.ViewSet):
 
             if verification_code.is_used:
                 return Response({'message': 'OTP already used'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if verification_code.is_expired:
+                return Response({'message': 'Verification code expired'}, status=status.HTTP_400_BAD_REQUEST)
 
             user = verification_code.user
             user.is_active = True
@@ -71,12 +88,15 @@ class UserViewSet(viewsets.ViewSet):
         except VerificationCode.DoesNotExist:
             return Response({'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'], url_path='resend-otp')
+    @action(detail=False, methods=['post'], url_path='resend-verfication-code')
     def resend_verification_code(self, request):
         try:
+            if not request.data.get('email'):
+                return Response({'message': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
             user = User.objects.get(email=request.data.get('email'))
             code = VerificationCode.objects.create(
                 user=user, email=user.email, code=get_random_code(4))
+            send_activation_code_via_email.delay(code.id)
 
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:

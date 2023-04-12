@@ -1,5 +1,6 @@
 # Python imports
 import uuid
+from datetime import datetime, timedelta
 
 # Django imports
 from django.db import models
@@ -8,9 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
 from django.utils import timezone
 
-
 class UserManager(BaseUserManager):
-    def create_user(self, email, username, full_name, password=None, **extra_fields):
+    def create_user(*, self, email, username=None, full_name, password=None, **extra_fields):
         if not email:
             raise ValueError('Users must have an email address')
 
@@ -25,7 +25,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, username, full_name, password=None, **extra_fields):
+    def create_superuser(*, self, email, username=None, full_name, password=None, **extra_fields):
         user = self.create_user(
             email,
             password=password,
@@ -52,9 +52,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         (ADMIN, 'Admin'),
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    username = models.CharField(max_length=255, unique=True)
+    username = models.CharField(max_length=255, blank=True, null=True, unique=True)
     full_name = models.CharField(max_length=255)
-    phone_number = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    phone_number = models.CharField(max_length=255, unique=True, blank=True, null=True)
     email = models.EmailField(verbose_name='email address', max_length=255, unique=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default=PATIENT)
@@ -69,7 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     def __str__(self):
-        return str(self.username)
+        return str(self.email)
 
     def has_perm(self, perm, obj=None):
         "Does the user have a specific permission?"
@@ -102,10 +102,14 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class VerificationCode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    email = models.EmailField(max_length=255, unique=True, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
     code = models.CharField(max_length=4, unique=True)
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.user.username
+    
+    @property
+    def is_expired(self):
+        return self.created_at + timezone.timedelta(minutes=1) < timezone.now()
