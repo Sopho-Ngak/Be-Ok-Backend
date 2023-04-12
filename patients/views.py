@@ -4,7 +4,6 @@
 from django.shortcuts import render
 
 # Third party imports
-import enchant
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -100,11 +99,11 @@ class PatientViewSet(viewsets.ModelViewSet):
         
         return Response({'message': 'Our doctor is having many requests at the moment.Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'], url_path='correct-symptoms')
-    def correct_symptoms_word(self, request):
-        word =  request.data.get('word')
-        if word:
-            data = check_and_autocorrect_mispelled_word(word)
-            return Response(data, status=status.HTTP_200_OK)
-        return Response({'message': 'Please enter a word'}, status=status.HTTP_400_BAD_REQUEST)
+    # @action(detail=False, methods=['post'], url_path='correct-symptoms')
+    # def correct_symptoms_word(self, request):
+    #     word =  request.data.get('word')
+    #     if word:
+    #         data = check_and_autocorrect_mispelled_word(word)
+    #         return Response(data, status=status.HTTP_200_OK)
+    #     return Response({'message': 'Please enter a word'}, status=status.HTTP_400_BAD_REQUEST)
 
