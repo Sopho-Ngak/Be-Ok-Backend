@@ -10,7 +10,7 @@ from accounts.serializers import (
     CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer)
 from accounts.models import (User, VerificationCode)
 from utils.generate_code import get_random_code
-from accounts.tasks import send_activation_code_via_email
+#from accounts.tasks import send_activation_code_via_email
 
 
 class UserLogin(viewsets.ModelViewSet):
@@ -96,7 +96,7 @@ class UserViewSet(viewsets.ModelViewSet):
             user = User.objects.get(email=request.data.get('email'))
             code = VerificationCode.objects.create(
                 user=user, email=user.email, code=get_random_code(4))
-            send_activation_code_via_email.delay(code.id)
+            #send_activation_code_via_email.delay(code.id)
 
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
