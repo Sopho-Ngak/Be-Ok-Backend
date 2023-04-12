@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import environ
 from datetime import timedelta
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,7 +20,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
@@ -76,16 +77,35 @@ LOGIN_FIELD = 'username'
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE':   env("DEV_DB_ENGINE"),
-        'NAME':     env("DEV_DB_NAME"),
-        'USER':     env("DEV_DB_USER"),
-        'PASSWORD': env("DEV_DB_PASSWORD"),
-        'HOST':     env("DEV_DB_HOST"),
-        'PORT':     env("DEV_DB_PORT")
+if DEBUG:
+
+    DATABASES = {
+        'default': {
+            'ENGINE':   env("DEV_DB_ENGINE"),
+            'NAME':     env("DEV_DB_NAME"),
+            'USER':     env("DEV_DB_USER"),
+            'PASSWORD': env("DEV_DB_PASSWORD"),
+            'HOST':     env("DEV_DB_HOST"),
+            'PORT':     env("DEV_DB_PORT")
+        }
     }
-}
+else:
+    # DATABASES = {
+    #     'default': dj_database_url.parse(
+    #        env("DATABASE_URL")
+    #     )
+    # }
+
+    DATABASES = {
+        'default': {
+            'ENGINE':   env("PROD_DB_ENGINE"),
+            'NAME':     env("PROD_DB_NAME"),
+            'USER':     env("PROD_DB_USER"),
+            'PASSWORD': env("PROD_DB_PASSWORD"),
+            'HOST':     env("PROD_DB_HOST"),
+            'PORT':     env("PROD_DB_PORT")
+        }
+    }
 
 EMAIL_BACKEND = env('EMAIL_BACKEND')
 EMAIL_HOST = env('EMAIL_HOST')
