@@ -15,7 +15,7 @@ from patients.models import Patient
 from doctors.models import Doctor
 from patients.serializers import PatientSerializer, PatientReportSerializer, PatientDependentReportSerializer
 from utils.ai_call import get_patient_result_from_ai
-from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
+#from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
 
 
 class PatientViewSet(viewsets.ModelViewSet):
