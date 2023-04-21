@@ -119,4 +119,4 @@ class VerificationCode(models.Model):
     
     @property
     def is_expired(self):
-        return self.created_at + timezone.timedelta(minutes=1) < timezone.now()
+        return self.created_at + timezone.timedelta(minutes=30) < timezone.now()

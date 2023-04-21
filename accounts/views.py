@@ -10,7 +10,7 @@ from accounts.serializers import (
     CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer)
 from accounts.models import (User, VerificationCode)
 from utils.generate_code import get_random_code
-#from accounts.tasks import send_activation_code_via_email
+from accounts.tasks import send_activation_code_via_email
 
 
 class UserLogin(viewsets.ModelViewSet):
@@ -61,6 +61,8 @@ class UserViewSet(viewsets.ModelViewSet):
             error_data['email'] = serializer.errors.get('email')[0]
         if serializer.errors.get('phone_number'):
             error_data['phone_number'] = serializer.errors.get('phone_number')[0]
+        if serializer.errors.get('username'):
+            error_data['username'] = serializer.errors.get('username')[0]
             
         return Response(error_data, status=status.HTTP_400_BAD_REQUEST)
 
@@ -74,6 +76,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 return Response({'message': 'OTP already used'}, status=status.HTTP_400_BAD_REQUEST)
 
             if verification_code.is_expired:
+                verification_code.delete()
                 return Response({'message': 'Verification code expired'}, status=status.HTTP_400_BAD_REQUEST)
 
             user = verification_code.user
@@ -94,9 +97,12 @@ class UserViewSet(viewsets.ModelViewSet):
             if not request.data.get('email'):
                 return Response({'message': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
             user = User.objects.get(email=request.data.get('email'))
-            code = VerificationCode.objects.create(
+            
+            # Delete all existing verification code for the user
+            VerificationCode.objects.filter(user=user).delete()
+            new_opt = VerificationCode.objects.create(
                 user=user, email=user.email, code=get_random_code(4))
-            #send_activation_code_via_email.delay(code.id)
+            send_activation_code_via_email(new_opt.id)
 
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
