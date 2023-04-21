@@ -101,6 +101,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'message': 'Invalid email'}, status=status.HTTP_400_BAD_REQUEST)
+        
+   
 
     @action(detail=False, methods=['post'], url_path='edit-profile')
     def edit_profile(self, request):

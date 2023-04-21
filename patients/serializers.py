@@ -41,9 +41,13 @@ class PatientReportSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         if not validated_data.get('consultated_by_doctor'):
-            dr_emile = Doctor.objects.get(user__username="Dr Emile")
+            doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
+            consultated_by = Doctor.objects.get(user=doctor)
+        else:
+            consultated_by = validated_data.get('consultated_by_doctor')
+
         patient = Patient.objects.get(user=user)
-        instance = PatientReport.objects.create(user=patient, consultated_by_doctor=dr_emile, **validated_data)
+        instance = PatientReport.objects.create(user=patient, consultated_by_doctor=consultated_by, **validated_data)
         return instance
 
 
@@ -73,11 +77,16 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
+        
         if not validated_data.get('consultated_by_doctor'):
-            dr_emile = Doctor.objects.get(user__username="Dr Emile")
+            doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
+            consultated_by = Doctor.objects.get(user=doctor)
+        else:
+            consultated_by = validated_data.get('consultated_by_doctor')
+
         patient = Patient.objects.get(user=user)
         instance = PatientDependentReport.objects.create(
-            user=patient, consulted_by_doctor=dr_emile, dependent_relationship=self.context['request'].GET.get("choice"), **validated_data)
+            user=patient, consulted_by_doctor=consultated_by, dependent_relationship=self.context['request'].GET.get("choice"), **validated_data)
         return instance
 
 

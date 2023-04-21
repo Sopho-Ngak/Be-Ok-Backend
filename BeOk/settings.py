@@ -79,16 +79,16 @@ LOGIN_FIELD = 'username'
 
 # if DEBUG:
 
-#     DATABASES = {
-#         'default': {
-#             'ENGINE':   env("DEV_DB_ENGINE"),
-#             'NAME':     env("DEV_DB_NAME"),
-#             'USER':     env("DEV_DB_USER"),
-#             'PASSWORD': env("DEV_DB_PASSWORD"),
-#             'HOST':     env("DEV_DB_HOST"),
-#             'PORT':     env("DEV_DB_PORT")
-#         }
+# DATABASES = {
+#     'default': {
+#         'ENGINE':   env("DEV_DB_ENGINE"),
+#         'NAME':     env("DEV_DB_NAME"),
+#         'USER':     env("DEV_DB_USER"),
+#         'PASSWORD': env("DEV_DB_PASSWORD"),
+#         'HOST':     env("DEV_DB_HOST"),
+#         'PORT':     env("DEV_DB_PORT")
 #     }
+# }
 # else:
     # DATABASES = {
     #     'default': dj_database_url.parse(
@@ -132,7 +132,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
     'AUTH_TOKEN_CLASSES': (
         'rest_framework_simplejwt.tokens.AccessToken',
@@ -140,11 +140,11 @@ SIMPLE_JWT = {
 }
 
 # Celery Broker - Redis
-CELERY_BROKER_URL = 'redis://localhost:6379'
-RESULT_BACKEND = 'redis://localhost:6379'
-ACCEPT_CONTENT = ['application/json']
-TASK_SERIALIZER = 'json'
-RESULT_SERIALIZER = 'json'
+# CELERY_BROKER_URL = 'redis://localhost:6379'
+# RESULT_BACKEND = 'redis://localhost:6379'
+# ACCEPT_CONTENT = ['application/json']
+# TASK_SERIALIZER = 'json'
+# RESULT_SERIALIZER = 'json'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
