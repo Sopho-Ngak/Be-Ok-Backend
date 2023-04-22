@@ -13,23 +13,27 @@ from celery import shared_task
 User = get_user_model()
 
 @shared_task
-def send_activation_code_via_email(id):
-    # try:
-    user_code = VerificationCode.objects.get(id=id)
+def send_activation_code_via_email(id, reset_pass=False):
+    try:
+        user_code = VerificationCode.objects.get(id=id)
 
-    subject = _('Activate your account')
-    from_email = settings.EMAIL_HOST_USER
-    to = user_code.user.email
-    context = {
-        'code': user_code.code,
-        'user': user_code.user.full_name,
-    }
-    html_content = render_to_string('accounts/activation_email.html', context=context)
-    text_content = strip_tags(html_content)
+        if reset_pass:
+            subject = _("Be-Ok - Reset Password")
+        else:    
+            subject = _('Activate your account')
+        from_email = settings.EMAIL_HOST_USER
+        to = user_code.user.email
+        context = {
+            'code': user_code.code,
+            'user': user_code.user.full_name,
+            'reset_password': reset_pass
+        }
+        html_content = render_to_string('accounts/verification_code_email_template.html', context=context)
+        text_content = strip_tags(html_content)
 
-    msg = EmailMultiAlternatives(
-        subject, text_content, from_email, [to])
-    msg.attach_alternative(html_content, "text/html")
-    msg.send()
-    # except Exception as e:
-    #     print(e)
+        msg = EmailMultiAlternatives(
+            subject, text_content, from_email, [to])
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+    except Exception as e:
+        print(e)
