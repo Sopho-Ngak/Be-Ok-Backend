@@ -73,6 +73,10 @@ WSGI_APPLICATION = 'BeOk.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 LOGIN_FIELD = 'username'
 
+AUTHENTICATION_BACKENDS = [
+    'utils.auth_backends.EmailBackend',
+]
+
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
