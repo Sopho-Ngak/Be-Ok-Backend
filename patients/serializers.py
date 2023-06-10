@@ -33,9 +33,13 @@ class PatientReportSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'user',
+            'pain_area',
             'symptoms',
             'consultated_by_doctor',
             'results',
+            'prescription',
+            'recommended_tests',
+            'recommendation',
             'created_at',
         ]
     def create(self, validated_data):

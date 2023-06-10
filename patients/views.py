@@ -53,25 +53,43 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='consult-doctor')
     def create_patient_result(self, request):
         choice = request.GET.get('choice')
-        base_text = "Act as a doctor and give me a diagnosis by recommending me some medications. Make use of paragraph for diagnosis, prescription and recommendation: \n"
+        # base_text = "Act as a doctor and give me a diagnosis by recommending me some medications. Make use of paragraph for diagnosis, prescription and recommendation: \n"
+        dianostic_text = "Act as a doctor and give me just a possible diagnosis to tell what the patient sick of: \n"
+        prescription_text = "Act as a doctor and give me just a possible prescription of medication to take: \n"
+        recommendation_text = "Act as a doctor and give me just possible recommendation to follow: \n"
+        recommended_tests_text = "Act as a doctor and give me just a possible recommended tests: \n"
+
+        if request.data.get('pain_area'):
+                dianostic_text += f"Patient's pain area is {request.data.get('pain_area')}. \n"
+        else:
+            request.data['pain_area'] = 'Unknown'
       
         try:
             patient = Patient.objects.get(user=request.user)
-            if patient.blood_group and patient.alergies:
-                base_text += f"Patient's blood group is {patient.blood_group} and alergies are {patient.alergies}. \n"
-            elif patient.blood_group:
-                base_text += f"Patient's blood group is {patient.blood_group}. \n"
-            elif patient.alergies:
-                base_text += f"Patient's alergies are {patient.alergies}. \n"
         except Patient.DoesNotExist:
-            pass
+            raise Response({'error': 'Patient does not exist'}, status=status.HTTP_400_BAD_REQUEST)
         if choice == 'Myself':
             if not request.data.get('symptoms'):
                 return Response({'error': 'Please enter your symptoms'}, status=status.HTTP_400_BAD_REQUEST)
             
-            patient_result = get_patient_result_from_ai(base_text+request.data.get('symptoms'))
+            # if patient.blood_group and patient.alergies:
+            #     base_text += f"Patient's blood group is {patient.blood_group} and alergies are {patient.alergies}. \n"
+            if not patient.blood_group == '--':
+                dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
+                print(dianostic_text)
+            elif patient.alergies:
+                prescription_text += f"Patient's alergies are {patient.alergies}. \n"
+            
+            patient_result = get_patient_result_from_ai(dianostic_text+request.data.get('symptoms'))
+            prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('symptoms'))
+            recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('symptoms'))
+            recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('symptoms'))
             if patient_result:
                 request.data['results'] = patient_result
+                request.data['prescription'] = prescription_result
+                request.data['recommendation'] = recommendation_result
+                request.data['recommended_tests'] = recommended_tests_result
+
                 serializer = self.get_serializer(data=request.data, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 serializer.save()

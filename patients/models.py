@@ -34,11 +34,58 @@ class Patient(models.Model):
         ordering = ['-created_at']
 
 class PatientReport(models.Model):
+    AI_CONSULTATION = 'AI'
+    IN_PERSON = 'In Person'
+    ONLINE = 'Online'
+
+    PAIN_AREA_CHOICES = (
+        ('--', '--'),
+        ('Abdomen', 'Abdomen'),
+        ('Back', 'Back'),
+        ('Chest', 'Chest'),
+        ('Head', 'Head'),
+        ('Joint', 'Joint'),
+        ('Muscle', 'Muscle'),
+        ('Neck', 'Neck'),
+        ('Pelvis', 'Pelvis'),
+        ('Shoulder', 'Shoulder'),
+        ('Throat', 'Throat'),
+        ('Respiratory', 'Respiratory'),
+        ('Unknown', 'Other'),
+    )
+
+    FOCUS_AREA_CHOICES = (
+        ('--', '--'),
+        ('Cardiology', 'Cardiology'),
+        ('Dermatology', 'Dermatology'),
+        ('Endocrinology', 'Endocrinology'),
+        ('Gastroenterology', 'Gastroenterology'),
+        ('Hematology', 'Hematology'),
+        ('Infectious Disease', 'Infectious Disease'),
+        ('Nephrology', 'Nephrology'),
+        ('Neurology', 'Neurology'),
+        ('Oncology', 'Oncology'),
+        ('Pulmonology', 'Pulmonology'),
+        ('Rheumatology', 'Rheumatology'),
+        ('Urology', 'Urology'),
+    )
+
+    CONSULTATION_TYPE = (
+        ('--', '--'),
+        (AI_CONSULTATION, 'AI Consultation'),
+        (IN_PERSON, 'In Person'),
+        (ONLINE, 'Online'),
+    )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_reports')
     symptoms = models.TextField()
     consultated_by_doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='patient_consultated_by')
+    consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=AI_CONSULTATION, max_length=255, blank=True, null=True)
+    pain_area = models.CharField(choices=PAIN_AREA_CHOICES, default=PAIN_AREA_CHOICES[0][1], max_length=255, blank=True, null=True)
     results = models.TextField()
+    prescription = models.TextField(blank=True, null=True)
+    recommended_tests = models.TextField(blank=True, null=True)
+    recommendation = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

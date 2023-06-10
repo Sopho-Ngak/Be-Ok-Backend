@@ -135,9 +135,9 @@ REST_FRAMEWORK = {
 # simple jwt setup
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    'ROTATE_REFRESH_TOKENS': True,
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=3650), # Set to 10 years
+    # 'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    # 'ROTATE_REFRESH_TOKENS': True,
     'AUTH_TOKEN_CLASSES': (
         'rest_framework_simplejwt.tokens.AccessToken',
     )

@@ -25,7 +25,7 @@ def create_user_profile(sender, instance, created, **kwargs):
         elif user_type == User.PATIENT:
             Patient.objects.create(user=instance)
         user_code = VerificationCode.objects.create(user=instance, email=instance.email, code=get_random_code(4))
-        return send_activation_code_via_email.delay(user_code.id)
+        return send_activation_code_via_email(user_code.id)
 
         # send email
         # try:
