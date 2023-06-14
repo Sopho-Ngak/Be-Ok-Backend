@@ -8,7 +8,15 @@ from django.db import models
 from accounts.models import User
 from doctors.models import Doctor
 
+AI_CONSULTATION = 'AI'
+IN_PERSON = 'In Person'
+ONLINE = 'Online'
 
+CONSULTATION_TYPE = (
+    (AI_CONSULTATION, 'AI Consultation'),
+    (IN_PERSON, 'In Person'),
+    (ONLINE, 'Online'),
+    )
 class Patient(models.Model):
     BLOOD_GROUP_CHOICES = (
         ('--', '--'),
@@ -34,12 +42,9 @@ class Patient(models.Model):
         ordering = ['-created_at']
 
 class PatientReport(models.Model):
-    AI_CONSULTATION = 'AI'
-    IN_PERSON = 'In Person'
-    ONLINE = 'Online'
+    
 
     PAIN_AREA_CHOICES = (
-        ('--', '--'),
         ('Abdomen', 'Abdomen'),
         ('Back', 'Back'),
         ('Chest', 'Chest'),
@@ -55,7 +60,6 @@ class PatientReport(models.Model):
     )
 
     FOCUS_AREA_CHOICES = (
-        ('--', '--'),
         ('Cardiology', 'Cardiology'),
         ('Dermatology', 'Dermatology'),
         ('Endocrinology', 'Endocrinology'),
@@ -70,18 +74,13 @@ class PatientReport(models.Model):
         ('Urology', 'Urology'),
     )
 
-    CONSULTATION_TYPE = (
-        ('--', '--'),
-        (AI_CONSULTATION, 'AI Consultation'),
-        (IN_PERSON, 'In Person'),
-        (ONLINE, 'Online'),
-    )
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_reports')
     symptoms = models.TextField()
     consultated_by_doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='patient_consultated_by')
     consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=AI_CONSULTATION, max_length=255, blank=True, null=True)
-    pain_area = models.CharField(choices=PAIN_AREA_CHOICES, default=PAIN_AREA_CHOICES[0][1], max_length=255, blank=True, null=True)
+    pain_area = models.CharField(choices=PAIN_AREA_CHOICES, default=PAIN_AREA_CHOICES[11][1], max_length=255, blank=True, null=True)
     results = models.TextField()
     prescription = models.TextField(blank=True, null=True)
     recommended_tests = models.TextField(blank=True, null=True)
@@ -125,6 +124,44 @@ class PatientDependentReport(models.Model):
 
     def __str__(self):
         return str(self.dependent_names)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Appointement(models.Model):
+    MENTAAL_HEALTH = 'Mental Health'
+    FERTILITY = 'Fertility'
+    STI = 'STI Sexually Transmitted Infection'
+    GENERAL_HEALTH = 'General Health'
+    PEDRIATRICS = 'Pedriatrics'
+    GYNECOLOGY = 'Gynecology'
+    INTERNAL_MEDICINE = 'Internal Medicine'
+    CHRONIC_DISEASE = 'Chronic Disease'
+
+    SERVICE_CHOICES = (
+        (MENTAAL_HEALTH, 'Mental Health'),
+        (FERTILITY, 'Fertility'),
+        (STI, 'STI Sexually Transmitted Infection'),
+        (GENERAL_HEALTH, 'General Health'),
+        (PEDRIATRICS, 'Pedriatrics'),
+        (GYNECOLOGY, 'Gynecology'),
+        (INTERNAL_MEDICINE, 'Internal Medicine'),
+        (CHRONIC_DISEASE, 'Chronic Disease'),
+    )
+
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_appointements')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='doctor_appointements')
+    service = models.CharField(choices=SERVICE_CHOICES, default=GENERAL_HEALTH, max_length=255)
+    consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=ONLINE, max_length=255, blank=True, null=True)
+    appointment_date = models.DateField()
+    appointment_time = models.TimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.patient)
 
     class Meta:
         ordering = ['-created_at']

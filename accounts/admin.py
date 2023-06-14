@@ -2,14 +2,16 @@ from typing import Any
 from django.contrib import admin
 from accounts.models import User, VerificationCode
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from accounts.forms import UserAdminChangeForm, UserAdminCreationForm, UserCreationForm
+from accounts.forms import UserAdminChangeForm, UserAdminCreationForm
+# groups
+from django.contrib.auth.models import Group
 
 
 class UserAdmin(BaseUserAdmin):
     form = UserAdminChangeForm
     add_form = UserAdminCreationForm
 
-    list_display = ('full_name', 'email', 'user_type','admin', )
+    list_display = ('username','full_name', 'email', 'user_type','admin', )
     list_filter = ('admin','user_type', 'is_active',)
     fieldsets = (
         (None, {'fields': (
@@ -34,6 +36,8 @@ class UserAdmin(BaseUserAdmin):
             {
                 'fields': (
                     'is_active',
+                    'admin',
+                    'staff',
                 )
             }
         ),
@@ -78,3 +82,8 @@ class UserAdmin(BaseUserAdmin):
 
 admin.site.register(User, UserAdmin)
 admin.site.register(VerificationCode)
+admin.site.unregister(Group)
+
+admin.site.site_header = "Be OK Admin"
+admin.site.site_title = "Admin Portal"
+admin.site.index_title = "Welcome to Be-Ok Admin Portal"

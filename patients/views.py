@@ -13,8 +13,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 # Local imports
 from patients.models import Patient
 from doctors.models import Doctor
-from patients.serializers import PatientSerializer, PatientReportSerializer, PatientDependentReportSerializer
+from patients.serializers import (PatientSerializer, PatientReportSerializer, PatientDependentReportSerializer,
+                                  PatientPaymentStatusSerializer, PatientCashInSerializer)
 from utils.ai_call import get_patient_result_from_ai
+from utils.payment_module import Payment
 #from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
 
 
@@ -34,15 +36,21 @@ class PatientViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create_patient_result':
             return PatientReportSerializer
-        if self.action == 'get_patient_record':
+        elif self.action == 'get_patient_record':
             return PatientSerializer
+        elif self.action == 'patient_payment':
+            if self.request.method == 'PUT':
+                return PatientPaymentStatusSerializer
+            elif self.request.method == 'POST':
+                return PatientCashInSerializer
+        
         return super().get_serializer_class()
 
     @action(detail=False, methods=['get'])
     def search(self, request):
         queryset = self.get_queryset()
         serializer = PatientSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'], url_path='get-patient-record')
     def get_patient_record(self, request):
@@ -116,6 +124,48 @@ class PatientViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
         
         return Response({'message': 'Our doctor is having many requests at the moment.Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['put', 'post'], url_path='payment')
+    def patient_payment(self, request):
+        payment_instance= Payment()
+        if request.method == 'PUT':
+            print(request.data)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            payment_instance.phone_number = serializer.data['phone_number']
+            payment_instance.reference_key = serializer.data['reference_key']
+            payment_instance.kind = serializer.data['kind']
+            transaction = payment_instance.check_status()
+            if len(transaction["transactions"])>0:
+                transaction_status = transaction['transactions'][0]['data']['status']
+                if transaction_status == 'successful':
+                    return Response({'message': 'Payment successful'}, status=status.HTTP_200_OK)
+                elif transaction_status == 'failed':
+                    return Response({'message': 'Payment failed. Make sure you have enough funds in your account and try again'}, status=status.HTTP_424_FAILED_DEPENDENCY)
+                elif transaction_status == 'pending':
+                    return Response({'message': 'Payment pending'}, status=status.HTTP_102_PROCESSING)
+            else:
+                return Response({'message': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            payment_instance.phone_number = serializer.data['phone_number']
+            payment_instance.amount = serializer.data['amount']
+
+            payment = payment_instance.pay()
+
+            return Response(payment, status=status.HTTP_200_OK)
+            
+
+            
+
+
+
+
+    
+
 
     # @action(detail=False, methods=['post'], url_path='correct-symptoms')
     # def correct_symptoms_word(self, request):

@@ -5,6 +5,8 @@ from accounts.models import User
 from accounts.serializers import UserInfoSerializer
 from doctors.models import Doctor
 
+from utils.payment_module import Payment
+
 
 class PatientInfoSerializer(serializers.ModelSerializer):
     personal_information = serializers.SerializerMethodField()
@@ -116,3 +118,24 @@ class PatientSerializer(serializers.ModelSerializer):
     def get_patient_personal_information(self, obj):
         serializer = UserInfoSerializer(obj.user)
         return serializer.data
+    
+class PatientPaymentStatusSerializer(serializers.Serializer):
+    reference_key = serializers.CharField(required=True)
+    kind = serializers.CharField(required=True)
+    phone_number = serializers.CharField(required=True, max_length=10)
+
+    def validate(self, data):
+        if data.get('kind').upper() not in ['CASHIN', 'CASHOUT']:
+            raise serializers.ValidationError("Invalid kind")
+        return data
+
+class PatientCashInSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(required=True, max_length=10)
+    amount = serializers.IntegerField(required=True)
+
+    def validate(self, data):
+        if not data.get('phone_number').isdigit() :
+            raise serializers.ValidationError("Enter a valid phone number please")
+        return data
+
+    
