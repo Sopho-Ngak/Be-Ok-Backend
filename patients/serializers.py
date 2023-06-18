@@ -78,6 +78,9 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
             'dependent_symptoms',
             'consulted_by_doctor',
             'dependent_results',
+            'dependent_prescription',
+            'dependent_recommended_tests',
+            'dependent_recommendation',
             'created_at',
         ]
 

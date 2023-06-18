@@ -84,7 +84,6 @@ class PatientViewSet(viewsets.ModelViewSet):
             #     base_text += f"Patient's blood group is {patient.blood_group} and alergies are {patient.alergies}. \n"
             if not patient.blood_group == '--':
                 dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
-                print(dianostic_text)
             elif patient.alergies:
                 prescription_text += f"Patient's alergies are {patient.alergies}. \n"
             
@@ -105,17 +104,23 @@ class PatientViewSet(viewsets.ModelViewSet):
             
         elif choice:
             if request.data.get("dependent_blood_group") and request.data.get("dependent_alergies"):
-                base_text += f"Patient's blood group is {request.data.get('dependent_blood_group')} and alergies are {request.data.get('dependent_alergies')}. \n"
+                dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')} and alergies are {request.data.get('dependent_alergies')}. \n"
             elif request.data.get("dependent_blood_group"):
-                base_text += f"Patient's blood group is {request.data.get('dependent_blood_group')}. \n"
+                dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')}. \n"
             elif request.data.get("dependent_alergies"):
-                base_text += f"Patient's alergies are {request.data.get('dependent_alergies')}. \n"
+                prescription_text += f"Patient's alergies are {request.data.get('dependent_alergies')}. \n"
             if request.data.get("dependent_age"):
-                base_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
+                prescription_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
 
-            dependent_result = get_patient_result_from_ai(base_text+request.data.get('dependent_symptoms'))
+            dependent_result = get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))
+            dependent_prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))
+            dependent_recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))
+            dependent_recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))
             if dependent_result:
                 request.data['dependent_results'] = dependent_result
+                request.data['dependent_prescription'] = dependent_prescription_result
+                request.data['dependent_recommendation'] = dependent_recommendation_result
+                request.data['dependent_recommended_tests'] = dependent_recommended_tests_result
                 serializer = PatientDependentReportSerializer(data=request.data, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
