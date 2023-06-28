@@ -13,3 +13,5 @@ ai_error.log
 **/migrations/*
 !/**/migrations/__init__.py
 */migrations/*
+# media file but not the content
+media/*

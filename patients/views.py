@@ -22,7 +22,7 @@ from utils.payment_module import Payment
 
 class PatientViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    queryset = Patient.objects.all().order_by('user__username')
+    queryset = Patient.objects.all().order_by('patient_username__username')
     serializer_class = PatientSerializer
 
     # def get_queryset(self):

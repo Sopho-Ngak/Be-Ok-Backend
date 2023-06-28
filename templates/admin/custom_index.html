@@ -1,0 +1,588 @@
+{% extends "admin/base_site.html" %}
+{% block extrastyle %}
+{{ block.super }}
+<style type="text/css">
+  .graphBox {
+    max-width: 100%;
+    position: relative;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    grid-gap: 30px;
+    max-height: 100%;
+  }
+  .graphBox .box {
+    position: relative;
+    background-color: #fff;
+    padding: 20px;
+    width: 90%;
+    max-height: 100%;
+    box-shadow: 0 7px 25px rgba(0, 0, 0, 0.08);
+    border-radius: 20px;
+  }
+  @media (max-width: 1050px) {
+    .graphBox {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+  }
+
+  /* Remove extra left and right margins, due to padding in columns */
+  .row {
+    margin: 0 5px;
+    flex-direction: row;
+    gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  /* Clear floats after the columns */
+  .row:after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+
+  /* Style the counter cards */
+  .card {
+    border: 1px solid #93BD68;
+    border-radius: 10px;
+    /* this adds the "card" effect */
+    padding: 16px;
+    text-align: center;
+    background-color: #fff;
+    max-width: 100%;
+    transform: scale(1);
+    transition: transform 0.5s;
+  }
+  .card:hover {
+    background-color: #d0edb3;
+    border: 1px solid #e1dfe4;
+    transform: scale(1.2);
+    z-index: 3;
+    margin: 10px;
+
+  }
+
+  .card-title {
+    font-size: 23px;
+    color: #93BD68;
+    font-weight: normal;
+    margin: 5px;
+  }
+
+  .card-icons {
+    color: #93BD68;
+    width: 30px;
+    height: 25px;
+  }
+
+  .card-data {
+    font-size: 20px;
+    font-weight: bold;
+    display: block;
+    margin: 8px 0 0 0;
+  }
+
+
+  /* Responsive columns - one column layout (vertical) on small screens */
+  @media screen and (max-width: 968px) {
+    .column {
+      width: 100%;
+      display: block;
+      margin-bottom: 20px;
+    }
+  }
+
+  @media screen and (max-width: 1630px) { 
+    .card-title {
+      font-size: 18px;
+    }
+
+    .card-data {
+      font-size: 18px;
+    }
+
+  }
+
+  @media screen and (max-width: 1717px) { 
+    .card-title {
+      font-size: 18px;
+    }
+
+    .card-data {
+      font-size: 18px;
+    }
+
+  }
+
+  @media screen and (max-width: 1282px) {
+    .card-title {
+      font-size: 15px;
+    }
+
+    .card-data {
+      font-size: 15px;
+    }
+
+  }
+
+  @media screen and (max-width: 1205px) {
+    .card-title {
+      font-size: 15px;
+    }
+
+    .card-data {
+      font-size: 15px;
+    }
+  
+    @media screen and (max-width: 1105px) {
+    
+    .card-title {
+      font-size: 15px;
+    }
+
+    .card-data {
+      font-size: 15px;
+    }
+  
+
+    @media screen and (max-width: 1081px) {
+  
+    .card-title {
+      font-size: 10px;
+    }
+
+    .card-data {
+      font-size: 10px;
+    }
+  }
+
+    @media screen and (max-width: 968px) {
+    .card{
+      padding: 5px;
+      display: block;
+    }
+    .row{
+      margin: 0 3px;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      font-size: 25px;
+    }
+
+    .card-data {
+      font-size: 25px;
+    }
+  }
+    @media screen and (max-width: 9052px) {
+      .card-title {
+        font-size: 20px;
+      }
+
+      .card-data {
+        font-size: 20px;
+      }
+
+    }
+    
+    
+    .link_style{
+      text-decoration: none;
+
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{{block.super}}
+{% if user.is_admin or user.is_staff and not user.is_owner%}
+<!-- <h1 style="text-align: center; font-size: 40px; color: #43336d;">Dashboard</h1> -->
+<br>
+<div class="row">
+    <div  onclick="location.href='{{link}}{% url 'admin:index' %}accounts/user/?admin__exact=1&staff__exact=1'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-building-lock" viewBox="0 0 16 16">
+          <path d="M2 1a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6.5a.5.5 0 0 1-1 0V1H3v14h3v-2.5a.5.5 0 0 1 .5-.5H8v4H3a1 1 0 0 1-1-1V1Z"/>
+          <path d="M4.5 2a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1Zm2.5.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1Zm3.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1ZM4 5.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1ZM7.5 5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1Zm2.5.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1ZM4.5 8a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1Zm2.5.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1ZM9 13a1 1 0 0 1 1-1v-1a2 2 0 1 1 4 0v1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-2Zm3-3a1 1 0 0 0-1 1v1h2v-1a1 1 0 0 0-1-1Z"/>
+        </svg>
+       </div>
+      <span class="card-title">Admins</span>
+      <hr>
+      <span class="card-data">{{admins_chart_data}}</span>
+    </div>
+
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}accounts/user/?user_type__exact=doctor'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-people-fill"
+          viewBox="0 0 16 16">
+          <path
+            d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+        </svg>
+      </div>
+      <span class="card-title">Doctors</span>
+      <hr>
+      <span class="card-data">{{doctor_chart_data}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}accounts/user/?user_type__exact=patient'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-activity" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M6 2a.5.5 0 0 1 .47.33L10 12.036l1.53-4.208A.5.5 0 0 1 12 7.5h3.5a.5.5 0 0 1 0 1h-3.15l-1.88 5.17a.5.5 0 0 1-.94 0L6 3.964 4.47 8.171A.5.5 0 0 1 4 8.5H.5a.5.5 0 0 1 0-1h3.15l1.88-5.17A.5.5 0 0 1 6 2Z"/>
+        </svg>
+      </div>
+      <span class="card-title">Patients</span>
+      <hr>
+      <span class="card-data">{{patient_chart_data}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/restaurant/'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bag-x" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M6.146 8.146a.5.5 0 0 1 .708 0L8 9.293l1.146-1.147a.5.5 0 1 1 .708.708L8.707 10l1.147 1.146a.5.5 0 0 1-.708.708L8 10.707l-1.146 1.147a.5.5 0 0 1-.708-.708L7.293 10 6.146 8.854a.5.5 0 0 1 0-.708z"/>
+          <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>
+        </svg>
+      </div>
+      <span class="card-title"> Unverified Doctors</span>
+      <hr>
+      <span class="card-data">{{restaurants_chart_data}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}accounts/user/?user_owner=yes'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
+          <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm1.679-4.493-1.335 2.226a.75.75 0 0 1-1.174.144l-.774-.773a.5.5 0 0 1 .708-.708l.547.548 1.17-1.951a.5.5 0 1 1 .858.514ZM11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
+          <path d="M8.256 14a4.474 4.474 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10c.26 0 .507.009.74.025.226-.341.496-.65.804-.918C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4s1 1 1 1h5.256Z"/>
+        </svg>
+      </div>
+      <span class="card-title">Verified Doctors</span>
+      <hr>
+      <span class="card-data">{{owners_chart_data}}</span>
+    </div>
+  </div>
+
+</div>
+<br>
+<br>
+<div class="graphBox">
+  <div class="box">
+    <canvas id="firstChart"></canvas>
+  </div>
+  <div class="box">
+    <canvas id="secondChart"></canvas>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const firstChart = document.getElementById('firstChart');
+
+  new Chart(firstChart, {
+    type: 'polarArea',
+    data: {
+      labels: [{% for label in chart_labels %}'{{ label }}',{% endfor %}],
+    datasets: [{
+      label: '',
+      data: [{% for d in chart_data %}{{ d }}, {% endfor %}],
+    backgroundColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 160, 65, 1)'
+
+  ],
+    borderColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 160, 65, 1)'
+
+  ],
+    borderWidth: 1
+        }]
+      },
+    options: {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true
+      }
+    }
+  }
+    });
+
+  const secondChart = document.getElementById('secondChart');
+
+  new Chart(secondChart, {
+    type: 'bar',
+    data: {
+      labels: [{% for label in chart_labels %}'{{ label }}',{% endfor %}],
+    datasets: [{
+      label: 'Maximun',
+      data: [{% for data in chart_data %}{{ data }}, {% endfor %}],
+    backgroundColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 159, 64, 1)'
+  ],
+    borderColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 159, 64, 1)'
+  ],
+    borderWidth: 1
+        }]
+      },
+    options: {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true
+      }
+    }
+  }
+    });
+</script>
+{%else%}
+<h1 style="text-align: center; font-size: 40px; color: #43336d;">Dashboard</h1>
+<br>
+<div class="row">
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/cuisine/'" style="cursor:pointer" class="card">
+      <div>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo2/dist/../src/media/svg/icons/Cooking/Fork-spoon-knife.svg-->
+          <svg class="card-icons"   xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect x="0" y="0" width="24" height="24"/>
+        <path d="M11,3 L11.4502481,7.5024814 C11.4784917,7.78491722 11.7161555,8 12,8 C12.2838445,8 12.5215083,7.78491722 12.5497519,7.5024814 L13,3 L14,3 L14.4502481,7.5024814 C14.4784917,7.78491722 14.7161555,8 15,8 C15.2838445,8 15.5215083,7.78491722 15.5497519,7.5024814 L16,3 L17,3 L17,7.5 C17,9.43299662 15.4329966,11 13.5,11 C11.5670034,11 10,9.43299662 10,7.5 L10,3 L11,3 Z"fill="#43336d" />
+        <path d="M13.5,13 L13.5,13 C14.0610373,13 14.5243493,13.4382868 14.55547,13.9984604 L14.916795,20.5023095 C14.9602658,21.2847837 14.3611851,21.9543445 13.5787108,21.9978153 C13.5524991,21.9992715 13.5262521,22 13.5,22 L13.5,22 C12.7163192,22 12.0810203,21.3647011 12.0810203,20.5810203 C12.0810203,20.5547682 12.0817488,20.5285212 12.083205,20.5023095 L12.44453,13.9984604 C12.4756507,13.4382868 12.9389627,13 13.5,13 Z" fill="#43336d" opacity="1"/>
+        <path d="M21.5,15 L21.5,15 C22.0634495,15 22.5311029,15.4354411 22.571247,15.9974587 L22.8931294,20.503812 C22.9480869,21.2732161 22.3689134,21.9414932 21.5995092,21.9964506 C21.5663922,21.9988161 21.5332014,22 21.5,22 L21.5,22 C20.7286356,22 20.1033212,21.3746856 20.1033212,20.6033212 C20.1033212,20.5701198 20.1045051,20.536929 20.1068706,20.503812 L20.428753,15.9974587 C20.4688971,15.4354411 20.9365505,15 21.5,15 Z" fill="#43336d" opacity="1"/>
+        <path d="M24,3 L24,13 L20,13 L20,7 C20,4.790861 21.790861,3 24,3 Z"  transform="translate(22.000000, 8.000000) scale(-1, 1) translate(-22.000000, -8.000000) "fill="#43336d"/>
+        <path d="M4.5,14 L4.5,14 C5.06209761,14 5.5273156,14.4370496 5.56237829,14.9980526 L5.90643257,20.5029211 C5.95497952,21.2796724 5.3646533,21.9487088 4.58790204,21.9972557 C4.55863704,21.9990848 4.52932209,22 4.5,22 L4.5,22 C3.72173313,22 3.09082317,21.36909 3.09082317,20.5908232 C3.09082317,20.5615011 3.09173837,20.5321861 3.09356743,20.5029211 L3.43762171,14.9980526 C3.4726844,14.4370496 3.93790239,14 4.5,14 Z" fill="#43336d" opacity="1"/>
+        <path d="M4.5,12 C2.56700338,12 1,9.43299662 1,7.5 C1,5.56700338 2.56700338,3 4.5,3 C6.43299662,3 8,5.56700338 8,7.5 C8,9.43299662 6.43299662,12 4.5,12 Z M4.5095372,4.60103244 L4.56069005,9.94758244 C5.61891495,9.8578583 6.45855912,8.97981222 6.47749614,7.8949109 C6.49728809,6.76103086 5.63275447,4.70470991 4.5095372,4.60103244 Z" fill="#43336d"/>
+      </g>
+    </svg><!--end::Svg Icon--></span>
+      </div>
+      <span class="card-title">Cuisines</span>
+      <hr>
+      <span class="card-data">{{cuisine_chart_data}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/event/'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-event" viewBox="0 0 16 16">
+          <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/>
+          <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+        </svg>
+      </div>
+      <span class="card-title">Events</span>
+      <hr>
+      <span class="card-data">{{event_chart_data}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/restaurant/?restaurant_owner=restaurants'" style="cursor:pointer" class="card">
+      <div>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo5/dist/../src/media/svg/icons/Food/Burger.svg--><svg class="card-icons" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+          <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+             <rect x="0" y="0" width="24" height="24"/>
+            <path d="M15,15 L15.9974233,16.1399123 C16.3611054,16.555549 16.992868,16.5976665 17.4085046,16.2339844 C17.4419154,16.20475 17.4733423,16.1733231 17.5025767,16.1399123 L18.5,15 L21,15 C20.4185426,17.9072868 17.865843,20 14.9009805,20 L9.09901951,20 C6.13415704,20 3.58145737,17.9072868 3,15 L15,15 Z" fill="#43336d"/>
+            <path d="M21,9 L3,9 L3,9 C3.58145737,6.09271316 6.13415704,4 9.09901951,4 L14.9009805,4 C17.865843,4 20.4185426,6.09271316 21,9 Z" fill="#43336d"/>
+            <rect fill="#43336d" opacity="0.3" x="2" y="11" width="20" height="2" rx="1"/>
+          </g>
+        </svg><!--end::Svg Icon--></span>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo5/dist/../src/media/svg/icons/Cooking/Dinner.svg--><svg class="card-icons" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+          <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect x="0" y="0" width="24" height="24"/>
+            <path d="M12.5,19 C8.91014913,19 6,16.0898509 6,12.5 C6,8.91014913 8.91014913,6 12.5,6 C16.0898509,6 19,8.91014913 19,12.5 C19,16.0898509 16.0898509,19 12.5,19 Z M12.5,16.4 C14.6539105,16.4 16.4,14.6539105 16.4,12.5 C16.4,10.3460895 14.6539105,8.6 12.5,8.6 C10.3460895,8.6 8.6,10.3460895 8.6,12.5 C8.6,14.6539105 10.3460895,16.4 12.5,16.4 Z M12.5,15.1 C11.0640597,15.1 9.9,13.9359403 9.9,12.5 C9.9,11.0640597 11.0640597,9.9 12.5,9.9 C13.9359403,9.9 15.1,11.0640597 15.1,12.5 C15.1,13.9359403 13.9359403,15.1 12.5,15.1 Z" fill="#43336d" opacity="0.3"/>
+            <path d="M22,13.5 L22,13.5 C22.2864451,13.5 22.5288541,13.7115967 22.5675566,13.9954151 L23.0979976,17.8853161 C23.1712756,18.4226878 22.7950533,18.9177172 22.2576815,18.9909952 C22.2137086,18.9969915 22.1693798,19 22.125,19 L22.125,19 C21.5576012,19 21.0976335,18.5400324 21.0976335,17.9726335 C21.0976335,17.9415812 21.0990414,17.9105449 21.1018527,17.8796201 L21.4547321,13.9979466 C21.4803698,13.7159323 21.7168228,13.5 22,13.5 Z" fill="#43336d" opacity="0.3"/>
+            <path d="M24,5 L24,12 L21,12 L21,8 C21,6.34314575 22.3431458,5 24,5 Z" fill="#43336d" transform="translate(22.500000, 8.500000) scale(-1, 1) translate(-22.500000, -8.500000) "/>
+            <path d="M0.714285714,5 L1.03696911,8.32873399 C1.05651593,8.5303749 1.22598532,8.68421053 1.42857143,8.68421053 C1.63115754,8.68421053 1.80062692,8.5303749 1.82017375,8.32873399 L2.14285714,5 L2.85714286,5 L3.17982625,8.32873399 C3.19937308,8.5303749 3.36884246,8.68421053 3.57142857,8.68421053 C3.77401468,8.68421053 3.94348407,8.5303749 3.96303089,8.32873399 L4.28571429,5 L5,5 L5,8.39473684 C5,9.77544872 3.88071187,10.8947368 2.5,10.8947368 C1.11928813,10.8947368 -7.19089982e-16,9.77544872 -8.8817842e-16,8.39473684 L0,5 L0.714285714,5 Z" fill="#43336d"/>
+            <path d="M2.5,12.3684211 L2.5,12.3684211 C2.90055463,12.3684211 3.23115721,12.6816982 3.25269782,13.0816732 L3.51381042,17.9301218 C3.54396441,18.4900338 3.11451066,18.9683769 2.55459863,18.9985309 C2.53641556,18.9995101 2.51820943,19 2.5,19 L2.5,19 C1.93927659,19 1.48472045,18.5454439 1.48472045,17.9847204 C1.48472045,17.966511 1.48521034,17.9483049 1.48618958,17.9301218 L1.74730218,13.0816732 C1.76884279,12.6816982 2.09944537,12.3684211 2.5,12.3684211 Z" fill="#43336d" opacity="0.3"/>
+          </g>
+        </svg><!--end::Svg Icon--></span>
+      </div>
+      <span class="card-title">Restaurants</span>
+      <hr>
+      <span class="card-data">{{restaurants_chart_data}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/restaurant/?restaurant_owner=bars'" style="cursor:pointer"class="card">
+      <div>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo5/dist/../src/media/svg/icons/Food/Bottle2.svg-->
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+          <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect x="0" y="0" width="24" height="24"/>
+            <path d="M8,18 L8,22 C8,22.5522847 8.44771525,23 9,23 L15,23 C15.5522847,23 16,22.5522847 16,22 L16,10.4142136 C16,10.1489971 15.8946432,9.89464316 15.7071068,9.70710678 L14.2928932,8.29289322 C14.1053568,8.10535684 14,7.85100293 14,7.58578644 L14,5 C14,4.44771525 13.5522847,4 13,4 L11,4 C10.4477153,4 10,4.44771525 10,5 L10,7.58578644 C10,7.85100293 9.89464316,8.10535684 9.70710678,8.29289322 L8.29289322,9.70710678 C8.10535684,9.89464316 8,10.1489971 8,10.4142136 L8,13 L12,13 L12,18 L8,18 Z" fill="#43336d"/>
+            <rect fill="#43336d" opacity="0.3" x="10" y="1" width="4" height="2" rx="1"/>
+          </g>
+        </svg><!--end::Svg Icon--></span>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo5/dist/../src/media/svg/icons/Food/Glass-martini.svg--><svg class="card-icons" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect x="0" y="0" width="24" height="24"/>
+        <path d="M13,19.4 L16.6856953,20.8742781 C16.8755245,20.9502098 17,21.1340642 17,21.3385165 L17,21.5 C17,21.7761424 16.7761424,22 16.5,22 L7.5,22 C7.22385763,22 7,21.7761424 7,21.5 L7,21.3385165 C7,21.1340642 7.12447547,20.9502098 7.31430466,20.8742781 L11,19.4 L11,13.5 L13,13.5 L13,19.4 Z" fill="#43336d" opacity="0.3"/>
+        <path d="M13.2493901,13.9609566 C12.3868662,14.6509757 11.1282815,14.5111329 10.4382624,13.648609 L3.86900921,5.43704257 C3.65623355,5.171073 3.54031242,4.84060724 3.54031242,4.5 C3.54031242,3.67157288 4.2118853,3 5.04031242,3 L18.9596876,3 C19.3002948,3 19.6307606,3.11592113 19.8967301,3.32869679 C20.5436231,3.84621111 20.6485051,4.79014967 20.1309908,5.43704257 L13.5617376,13.648609 C13.4694741,13.7639384 13.3647195,13.868693 13.2493901,13.9609566 Z M6.08062485,5 L8.5,8.01229084 L15.5,8.01229084 L17.9193752,5 L6.08062485,5 Z" fill="#43336d" fill-rule="nonzero"/>
+        </g>
+        </svg><!--end::Svg Icon--></span>
+      </div>
+      <span class="card-title">Bars</span>
+      <hr>
+      <span class="card-data">{{bars}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/restaurant/?restaurant_owner=bars+and+restaurants'" style="cursor:pointer" class="card">
+      <div>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo5/dist/../src/media/svg/icons/Food/Wine.svg--><svg class="card-icons" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+          <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect x="0" y="0" width="24" height="24"/>
+            <path d="M12.9999711,21.0076775 C14.2768414,21.0908914 15.4225108,21.8450216 16,23 L8,23 C8.57748919,21.8450216 9.72315858,21.0908914 11.0000289,21.0076775 C11.0000096,21.0051206 11,21.0025614 11,21 L11,15.5 L13,15.5 L13,21 C13,21.0025614 12.9999904,21.0051206 12.9999711,21.0076775 Z" fill="#43336d" opacity="0.3"/>
+            <path d="M8,4 L7.5,8 C13.5,8 16.5,8 16.5,8 C16.4375594,7.20614914 16.2708927,5.87281581 16,4 L8,4 Z M8.28594472,2 L15.7140072,2 C16.9470152,2 17.9721494,2.92839923 18.0667168,4.13070039 L18.5415132,10.1671184 C18.816379,13.6616787 16.142506,16.712495 12.5692506,16.9813073 C12.4036601,16.9937645 12.2376417,17 12.071562,17 L11.9283899,17 C8.34457839,17 5.43932511,14.1587301 5.43932511,10.6538462 C5.43932511,10.4914241 5.44570102,10.329062 5.45843875,10.1671184 L5.9332352,4.13070039 C6.0278026,2.92839923 7.05293673,2 8.28594472,2 Z" fill="#43336d" fill-rule="nonzero"/>
+          </g>
+        </svg><!--end::Svg Icon--></span>
+        <span class="svg-icon svg-icon-primary svg-icon-2x"><!--begin::Svg Icon | path:/var/www/preview.keenthemes.com/metronic/releases/2021-05-14-112058/theme/html/demo5/dist/../src/media/svg/icons/Cooking/Dinner.svg--><svg class="card-icons" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+          <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <rect x="0" y="0" width="24" height="24"/>
+            <path d="M12.5,19 C8.91014913,19 6,16.0898509 6,12.5 C6,8.91014913 8.91014913,6 12.5,6 C16.0898509,6 19,8.91014913 19,12.5 C19,16.0898509 16.0898509,19 12.5,19 Z M12.5,16.4 C14.6539105,16.4 16.4,14.6539105 16.4,12.5 C16.4,10.3460895 14.6539105,8.6 12.5,8.6 C10.3460895,8.6 8.6,10.3460895 8.6,12.5 C8.6,14.6539105 10.3460895,16.4 12.5,16.4 Z M12.5,15.1 C11.0640597,15.1 9.9,13.9359403 9.9,12.5 C9.9,11.0640597 11.0640597,9.9 12.5,9.9 C13.9359403,9.9 15.1,11.0640597 15.1,12.5 C15.1,13.9359403 13.9359403,15.1 12.5,15.1 Z" fill="#43336d" opacity="0.3"/>
+            <path d="M22,13.5 L22,13.5 C22.2864451,13.5 22.5288541,13.7115967 22.5675566,13.9954151 L23.0979976,17.8853161 C23.1712756,18.4226878 22.7950533,18.9177172 22.2576815,18.9909952 C22.2137086,18.9969915 22.1693798,19 22.125,19 L22.125,19 C21.5576012,19 21.0976335,18.5400324 21.0976335,17.9726335 C21.0976335,17.9415812 21.0990414,17.9105449 21.1018527,17.8796201 L21.4547321,13.9979466 C21.4803698,13.7159323 21.7168228,13.5 22,13.5 Z" fill="#43336d" opacity="0.3"/>
+            <path d="M24,5 L24,12 L21,12 L21,8 C21,6.34314575 22.3431458,5 24,5 Z" fill="#43336d" transform="translate(22.500000, 8.500000) scale(-1, 1) translate(-22.500000, -8.500000) "/>
+            <path d="M0.714285714,5 L1.03696911,8.32873399 C1.05651593,8.5303749 1.22598532,8.68421053 1.42857143,8.68421053 C1.63115754,8.68421053 1.80062692,8.5303749 1.82017375,8.32873399 L2.14285714,5 L2.85714286,5 L3.17982625,8.32873399 C3.19937308,8.5303749 3.36884246,8.68421053 3.57142857,8.68421053 C3.77401468,8.68421053 3.94348407,8.5303749 3.96303089,8.32873399 L4.28571429,5 L5,5 L5,8.39473684 C5,9.77544872 3.88071187,10.8947368 2.5,10.8947368 C1.11928813,10.8947368 -7.19089982e-16,9.77544872 -8.8817842e-16,8.39473684 L0,5 L0.714285714,5 Z" fill="#43336d"/>
+            <path d="M2.5,12.3684211 L2.5,12.3684211 C2.90055463,12.3684211 3.23115721,12.6816982 3.25269782,13.0816732 L3.51381042,17.9301218 C3.54396441,18.4900338 3.11451066,18.9683769 2.55459863,18.9985309 C2.53641556,18.9995101 2.51820943,19 2.5,19 L2.5,19 C1.93927659,19 1.48472045,18.5454439 1.48472045,17.9847204 C1.48472045,17.966511 1.48521034,17.9483049 1.48618958,17.9301218 L1.74730218,13.0816732 C1.76884279,12.6816982 2.09944537,12.3684211 2.5,12.3684211 Z" fill="#43336d" opacity="0.3"/>
+          </g>
+        </svg><!--end::Svg Icon--></span>
+      </div>
+      <span class="card-title">Bars and Restaurants</span>
+      <hr>
+      <span class="card-data">{{bar_restaurant}}</span>
+    </div>
+</div>
+<br>
+<br>
+<div class="row">
+      <div onclick="location.href='{{link}}{% url 'admin:index' %}home/event/?event_list=upcoming_event'" style="cursor:pointer" class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-week" viewBox="0 0 16 16">
+          <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm-3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm-5 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/>
+          <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+        </svg>
+      </div>
+      <span class="card-title">Upcoming Events</span>
+      <hr>
+      <span class="card-data">{{upcoming_event}}</span>
+    </div>
+    <div onclick="location.href='{{link}}{% url 'admin:index' %}home/restaurant/?restaurant_owner=rate'" style="cursor:pointer"  class="card">
+      <div>
+        <svg class="card-icons" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-journal-medical" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M8 4a.5.5 0 0 1 .5.5v.634l.549-.317a.5.5 0 1 1 .5.866L9 6l.549.317a.5.5 0 1 1-.5.866L8.5 6.866V7.5a.5.5 0 0 1-1 0v-.634l-.549.317a.5.5 0 1 1-.5-.866L7 6l-.549-.317a.5.5 0 0 1 .5-.866l.549.317V4.5A.5.5 0 0 1 8 4zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+          <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+          <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+        </svg>
+      </div>
+      <span class="card-title">Restaurants Rates</span>
+      <hr>
+      <span class="card-data">{{rating}}</span>
+    </div>
+  </div>
+</div>
+<br>
+<br>
+<div class="graphBox">
+  <div class="box">
+    <canvas id="firstChart"></canvas>
+  </div>
+  <div class="box">
+    <canvas id="secondChart"></canvas>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const firstChart = document.getElementById('firstChart');
+
+  new Chart(firstChart, {
+    type: 'polarArea',
+    data: {
+      labels: [{% for label in chart_labels %}'{{ label }}',{% endfor %}],
+    datasets: [{
+      label: '',
+      data: [{% for d in chart_data %}{{ d }}, {% endfor %}],
+    backgroundColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 160, 65, 1)',
+    'rgba(103, 36, 0, 1)',
+
+  ],
+    borderColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 160, 65, 1)',
+    'rgba(103, 36, 0, 1)',
+
+  ],
+    borderWidth: 1
+        }]
+      },
+    options: {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true
+      }
+    }
+  }
+    });
+
+
+  const secondChart = document.getElementById('secondChart');
+
+  new Chart(secondChart, {
+    type: 'bar',
+    data: {
+      labels: [{% for label in chart_labels %}'{{ label }}',{% endfor %}],
+    datasets: [{
+      label: 'Maximun',
+      data: [{% for data in chart_data %}{{ data }}, {% endfor %}],
+    backgroundColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 159, 64, 1)'
+  ],
+    borderColor: [
+    'rgba(255, 99, 132, 1)',
+    'rgba(54, 162, 235, 1)',
+    'rgba(255, 206, 86, 1)',
+    'rgba(75, 192, 192, 1)',
+    'rgba(153, 102, 255, 1)',
+    'rgba(255, 159, 64, 1)'
+  ],
+    borderWidth: 1
+        }]
+      },
+    options: {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true
+      }
+    }
+  }
+    });
+</script>
+{% endif %}
+{% endblock %}

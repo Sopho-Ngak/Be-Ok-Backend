@@ -1,12 +1,14 @@
 # Python import
 import uuid
-
+import datetime
 # Django imports
 from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 
 # Local imports
 from accounts.models import User
-from doctors.models import Doctor
+from doctors.models import Doctor, DoctorAvailability
 
 AI_CONSULTATION = 'AI'
 IN_PERSON = 'In Person'
@@ -30,13 +32,13 @@ class Patient(models.Model):
         ('O-', 'O-'),
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    patient_username = models.OneToOneField(User, on_delete=models.CASCADE)
     blood_group = models.CharField(choices=BLOOD_GROUP_CHOICES, default=BLOOD_GROUP_CHOICES[0][1],max_length=255, blank=True, null=True)
     alergies = models.TextField( blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return str(self.user)
+        return str(self.patient_username)
 
     class Meta:
         ordering = ['-created_at']
@@ -76,7 +78,7 @@ class PatientReport(models.Model):
 
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_reports')
+    patient_username = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_reports')
     symptoms = models.TextField()
     consultated_by_doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='patient_consultated_by')
     consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=AI_CONSULTATION, max_length=255, blank=True, null=True)
@@ -88,7 +90,7 @@ class PatientReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return str(self.user)
+        return str(self.patient_username)
     
     class Meta:
         ordering = ['-created_at']
@@ -108,7 +110,7 @@ class PatientDependentReport(models.Model):
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_dependents')
+    patient_username = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_dependents')
     dependent_names = models.CharField(max_length=255)
     dependent_relationship = models.CharField(choices=RELATIONSHIP_CHOICES ,max_length=255)
     dependent_age = models.IntegerField()
@@ -159,12 +161,36 @@ class Appointement(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='doctor_appointements')
     service = models.CharField(choices=SERVICE_CHOICES, default=GENERAL_HEALTH, max_length=255)
     consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=ONLINE, max_length=255, blank=True, null=True)
-    appointment_date = models.DateField()
-    appointment_time = models.TimeField()
+    consultation_note = models.TextField(blank=True, null=True)
+    doctor_availability = models.ForeignKey(DoctorAvailability, on_delete=models.CASCADE, related_name='doctor_availability')
+    is_confirmed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.patient)
+    
+    @property
+    def day(self):
+        return self.doctor_availability.day
+    
+    @property
+    def start_date(self):
+        return self.doctor_availability.starting_date
+    
+    @property
+    def end_date(self):
+        return self.doctor_availability.ending_date
+    
+    def happend_in(self):
+        time_remaining = self.end_date - timezone.now()
+
+        data = {
+            'days': time_remaining.days,
+            'hours': time_remaining.seconds // 3600,
+            'minutes': (time_remaining.seconds // 60) % 60,
+            'seconds': time_remaining.seconds % 60
+        }
+        return data
 
     class Meta:
         ordering = ['-created_at']

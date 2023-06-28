@@ -23,7 +23,7 @@ def create_user_profile(sender, instance, created, **kwargs):
         if user_type == User.DOCTOR:
             Doctor.objects.create(user=instance)
         elif user_type == User.PATIENT:
-            Patient.objects.create(user=instance)
+            Patient.objects.create(patient_username=instance)
         user_code = VerificationCode.objects.create(user=instance, email=instance.email, code=get_random_code(4))
         return send_activation_code_via_email(user_code.id)
 

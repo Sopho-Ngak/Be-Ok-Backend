@@ -5,6 +5,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from accounts.forms import UserAdminChangeForm, UserAdminCreationForm
 # groups
 from django.contrib.auth.models import Group
+from django.utils.translation import gettext_lazy as _
 
 
 class UserAdmin(BaseUserAdmin):
@@ -73,10 +74,17 @@ class UserAdmin(BaseUserAdmin):
     disable_user.short_description = "Disable selected users"
     enable_user.short_description = "Enable selected users"
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(is_superuser=False)
+
     def save_model(self, request: Any, obj, form: Any, change: Any) -> None:
         if change:
             if obj.user_type == User.ADMIN:
-                obj.staff = True        
+                obj.staff = True
+                obj.admin = True        
         return super().save_model(request, obj, form, change)
 
 
@@ -87,3 +95,10 @@ admin.site.unregister(Group)
 admin.site.site_header = "Be OK Admin"
 admin.site.site_title = "Admin Portal"
 admin.site.index_title = "Welcome to Be-Ok Admin Portal"
+class MajorAdminPortal(admin.AdminSite):
+    admin.site.index_title = _("")
+    admin.site.site_title = _("Be-Ok")  
+    admin.site.index_template = 'admin/custom_index.html'
+    
+    def has_permission(self, request) -> bool:
+        return False
