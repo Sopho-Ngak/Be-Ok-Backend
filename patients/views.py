@@ -54,7 +54,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='get-patient-record')
     def get_patient_record(self, request):
-        patient = Patient.objects.get(user=request.user)
+        patient = Patient.objects.get(patient_username=request.user)
         serializer = PatientSerializer(patient)
         return Response(serializer.data)
     
@@ -73,7 +73,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             request.data['pain_area'] = 'Unknown'
       
         try:
-            patient = Patient.objects.get(user=request.user)
+            patient = Patient.objects.get(patient_username=request.user)
         except Patient.DoesNotExist:
             raise Response({'error': 'Patient does not exist'}, status=status.HTTP_400_BAD_REQUEST)
         if choice == 'Myself':
