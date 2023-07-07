@@ -17,12 +17,16 @@ class PatientInfoSerializer(serializers.ModelSerializer):
             'personal_information',
             'blood_group',
             'alergies',
+            'chronic_diseases',
+            'habits',
+            'current_prescription',
+            'is_pregnant',
             'created_at'
         ]
-
     def get_personal_information(self, obj):
-        user = User.objects.get(id=obj.user.id)
+        user = User.objects.get(username=obj)
         serializer = UserInfoSerializer(user)
+
         return serializer.data
 
 
@@ -52,8 +56,8 @@ class PatientReportSerializer(serializers.ModelSerializer):
         else:
             consultated_by = validated_data.get('consultated_by_doctor')
 
-        patient = Patient.objects.get(user=user)
-        instance = PatientReport.objects.create(user=patient, consultated_by_doctor=consultated_by, **validated_data)
+        patient = Patient.objects.get(patient_username=user)
+        instance = PatientReport.objects.create(patient_username=patient, consultated_by_doctor=consultated_by, **validated_data)
         return instance
 
 
@@ -93,9 +97,9 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
         else:
             consultated_by = validated_data.get('consultated_by_doctor')
 
-        patient = Patient.objects.get(user=user)
+        patient = Patient.objects.get(patient_username=user)
         instance = PatientDependentReport.objects.create(
-            user=patient, consulted_by_doctor=consultated_by, dependent_relationship=self.context['request'].GET.get("choice"), **validated_data)
+            patient_username=patient, consulted_by_doctor=consultated_by, dependent_relationship=self.context['request'].GET.get("choice"), **validated_data)
         return instance
 
 
@@ -104,23 +108,45 @@ class PatientSerializer(serializers.ModelSerializer):
         source="patient_reports", many=True, read_only=True)
     patient_dependents_repports = PatientDependentReportSerializer(
         source="patient_dependents", many=True, read_only=True)
-    patient_personal_information = serializers.SerializerMethodField()
+    # patient_personal_information = serializers.SerializerMethodField()
+    patient_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
         fields = [
             'id',
-            'user',
-            'blood_group',
-            'alergies',
-            "patient_personal_information",
+            # "patient_personal_information",
+            "patient_profile",
             'patient_previous_reports',
             'patient_dependents_repports',
         ]
 
-    def get_patient_personal_information(self, obj):
-        serializer = UserInfoSerializer(obj.user)
+    # def get_patient_personal_information(self, obj):
+    #     serializer = UserInfoSerializer(obj.patient_username)
+    #     return serializer.data
+    
+    def get_patient_profile(self, obj):
+        serializer = PatientInfoSerializer(obj.patient_username)
         return serializer.data
+
+class PatientEditProfileSerializer(serializers.ModelSerializer):
+
+    def validate(self, attrs):
+        if self.context['request'].user.gender == User.MALE:
+            if attrs.get('is_pregnant'):
+                raise serializers.ValidationError("You can't be pregnant")
+        return super().validate(attrs)
+    
+    class Meta:
+        model = Patient
+        fields = [
+            'blood_group',
+            'alergies',
+            'chronic_diseases',
+            'habits',
+            'current_prescription',
+            'is_pregnant',
+        ]
     
 class PatientPaymentStatusSerializer(serializers.Serializer):
     reference_key = serializers.CharField(required=True)

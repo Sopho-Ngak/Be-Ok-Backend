@@ -1,4 +1,5 @@
 # Python import
+from typing import Iterable, Optional
 import uuid
 import datetime
 # Django imports
@@ -35,13 +36,25 @@ class Patient(models.Model):
     patient_username = models.OneToOneField(User, on_delete=models.CASCADE)
     blood_group = models.CharField(choices=BLOOD_GROUP_CHOICES, default=BLOOD_GROUP_CHOICES[0][1],max_length=255, blank=True, null=True)
     alergies = models.TextField( blank=True, null=True)
+    chronic_diseases = models.TextField( blank=True, null=True)
+    habits = models.TextField( blank=True, null=True)
+    current_prescription = models.TextField( blank=True, null=True)
+    is_pregnant = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.patient_username)
+    
+    def save(self,) -> None:
+        if self.patient_username.gender == User.MALE:
+            if self.is_pregnant:
+                raise Exception("This Patient cannot be pregnant")
+        return super().save()
 
     class Meta:
         ordering = ['-created_at']
+
+
 
 class PatientReport(models.Model):
     

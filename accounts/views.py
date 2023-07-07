@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 
+# Django imports
+from django.conf import settings
+
 # Local imports
 from accounts.serializers import (
     CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer)

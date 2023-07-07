@@ -2,6 +2,7 @@
 
 # Django imports
 from django.shortcuts import render
+from django.conf import settings
 
 # Third party imports
 from rest_framework import viewsets, status
@@ -13,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 # Local imports
 from patients.models import Patient
 from doctors.models import Doctor
-from patients.serializers import (PatientSerializer, PatientReportSerializer, PatientDependentReportSerializer,
+from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   PatientPaymentStatusSerializer, PatientCashInSerializer)
 from utils.ai_call import get_patient_result_from_ai
 from utils.payment_module import Payment
@@ -38,6 +39,13 @@ class PatientViewSet(viewsets.ModelViewSet):
             return PatientReportSerializer
         elif self.action == 'get_patient_record':
             return PatientSerializer
+        
+        elif self.action == 'patient_profile':
+            if self.request.method == 'PATCH':
+                return PatientEditProfileSerializer
+            elif self.request.method == 'GET':
+                return PatientInfoSerializer
+
         elif self.action == 'patient_payment':
             if self.request.method == 'PUT':
                 return PatientPaymentStatusSerializer
@@ -52,6 +60,30 @@ class PatientViewSet(viewsets.ModelViewSet):
         serializer = PatientSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+    @action(detail=False, methods=['get', 'patch'], url_path='profile')
+    def patient_profile(self, request):
+        if request.method == "GET":
+            try:
+                instance = Patient.objects.get(patient_username=request.user)
+                serializer = self.get_serializer(instance)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Patient.DoesNotExist:
+                return Response({"message": "No patient found"}, status=status.HTTP_200_OK)
+            
+        elif request.method == "PATCH":
+            try:
+                instance = Patient.objects.get(patient_username=request.user)
+                serializer = self.get_serializer(
+                    instance, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Patient.DoesNotExist:
+                return Response(
+                    {"message": settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIS},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+    
     @action(detail=False, methods=['get'], url_path='get-patient-record')
     def get_patient_record(self, request):
         patient = Patient.objects.get(patient_username=request.user)
@@ -61,11 +93,10 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='consult-doctor')
     def create_patient_result(self, request):
         choice = request.GET.get('choice')
-        # base_text = "Act as a doctor and give me a diagnosis by recommending me some medications. Make use of paragraph for diagnosis, prescription and recommendation: \n"
-        dianostic_text = "Act as a doctor and give me just a possible diagnosis to tell what the patient sick of: \n"
-        prescription_text = "Act as a doctor and give me just a possible prescription of medication to take: \n"
-        recommendation_text = "Act as a doctor and give me just possible recommendation to follow: \n"
-        recommended_tests_text = "Act as a doctor and give me just a possible recommended tests: \n"
+        dianostic_text = settings.PATIENT_CONSTANTS.messages.DIANOSTIC_TEXT
+        prescription_text = settings.PATIENT_CONSTANTS.messages.PRESCRIPTION_TEXT
+        recommendation_text = settings.PATIENT_CONSTANTS.messages.RECOMMENDATION_TEXT
+        recommended_tests_text = settings.PATIENT_CONSTANTS.messages.RECOMMENDED_TESTS_TEXT
 
         if request.data.get('pain_area'):
                 dianostic_text += f"Patient's pain area is {request.data.get('pain_area')}. \n"
@@ -75,13 +106,11 @@ class PatientViewSet(viewsets.ModelViewSet):
         try:
             patient = Patient.objects.get(patient_username=request.user)
         except Patient.DoesNotExist:
-            raise Response({'error': 'Patient does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+            raise Response({'error': settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIST}, status=status.HTTP_400_BAD_REQUEST)
         if choice == 'Myself':
             if not request.data.get('symptoms'):
                 return Response({'error': 'Please enter your symptoms'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # if patient.blood_group and patient.alergies:
-            #     base_text += f"Patient's blood group is {patient.blood_group} and alergies are {patient.alergies}. \n"
             if not patient.blood_group == '--':
                 dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
             elif patient.alergies:
@@ -128,7 +157,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         else:
             return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
         
-        return Response({'message': 'Our doctor is having many requests at the moment.Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': settings.PATIENT_CONSTANTS.messages.AI_ERROR_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['put', 'post'], url_path='payment')
     def patient_payment(self, request):
@@ -147,7 +176,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 if transaction_status == 'successful':
                     return Response({'message': 'Payment successful'}, status=status.HTTP_200_OK)
                 elif transaction_status == 'failed':
-                    return Response({'message': 'Payment failed. Make sure you have enough funds in your account and try again'}, status=status.HTTP_424_FAILED_DEPENDENCY)
+                    return Response({'message': settings.PATIENT_CONSTANTS.messages.PAYMENT_FAILED}, status=status.HTTP_424_FAILED_DEPENDENCY)
                 elif transaction_status == 'pending':
                     return Response({'message': 'Payment pending'}, status=status.HTTP_102_PROCESSING)
             else:

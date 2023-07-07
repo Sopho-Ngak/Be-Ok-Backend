@@ -1,5 +1,6 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
+from django.utils import timezone
 
 from accounts.models import User
 
@@ -46,6 +47,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserInfoSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(read_only=True)
     user_type = serializers.CharField(read_only=True)
+    age = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -58,5 +60,14 @@ class UserInfoSerializer(serializers.ModelSerializer):
             'address',
             'user_type',
             'about_me',
-            'user_type',
+            'gender',
+            'marital_status',
+            'date_of_birth',
+            'age',
+
         ]
+
+    def get_age(self, obj):
+        if obj.date_of_birth:
+            return timezone.now().year - obj.date_of_birth.year
+        return None

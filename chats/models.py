@@ -26,13 +26,13 @@ class Chat(models.Model):
 
 class Message(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    sender = models.ForeignKey(
-        User, on_delete=models.SET_NULL, related_name="chat_sender", blank=True, null=True
+    doctor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, related_name="chat_doctor", blank=True, null=True
     )
-    receiver = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="chat_receiver", blank=True, null=True
+    patient = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="chat_patient", blank=True, null=True
     )
     message = models.ManyToManyField(
-        Chat, blank=True, related_name="message"
+        Chat, blank=True, related_name="messages"
     )
     created_on = models.DateTimeField(auto_now_add=True)

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 
-from doctors.models import Doctor
+from doctors.models import Doctor, DoctorDocument
 from patients.models import Patient
 from accounts.models import User, VerificationCode
 from accounts.tasks import send_activation_code_via_email
@@ -21,7 +21,8 @@ def create_user_profile(sender, instance, created, **kwargs):
         user_type = instance.user_type
 
         if user_type == User.DOCTOR:
-            Doctor.objects.create(user=instance)
+            doctor_instance = Doctor.objects.create(user=instance)
+            DoctorDocument.objects.create(doctor=doctor_instance)
         elif user_type == User.PATIENT:
             Patient.objects.create(patient_username=instance)
         user_code = VerificationCode.objects.create(user=instance, email=instance.email, code=get_random_code(4))

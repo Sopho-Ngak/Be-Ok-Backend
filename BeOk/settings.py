@@ -3,6 +3,7 @@ import os
 import environ
 from datetime import timedelta
 import dj_database_url
+from django.utils.module_loading import import_string
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,6 +24,24 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
+
+class ObjDict(dict):
+    def __getattribute__(self, item):
+        try:
+            val = self[item]
+            if isinstance(val, str):
+                val = import_string(val)
+            elif isinstance(val, (list, tuple)):
+                val = [import_string(v) if isinstance(
+                    v, str) else v for v in val]
+            self[item] = val
+        except KeyError:
+            val = super(ObjDict, self).__getattribute__(item)
+
+        return val
+    
+ACOUNT_CONSTANTS = ObjDict({"messages": "accounts.constants.Messages"})
+PATIENT_CONSTANTS = ObjDict({"messages": "patients.constants.Messages"})
 
 
 # Application definition

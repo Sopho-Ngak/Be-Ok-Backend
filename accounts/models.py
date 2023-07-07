@@ -51,20 +51,53 @@ class UserManager(BaseUserManager):
         return self.filter(Q(username__icontains=name) | Q(full_name__icontains=name))
 
 class User(AbstractBaseUser, PermissionsMixin):
+    # USER TYPE
     DOCTOR = 'doctor'
     PATIENT = 'patient'
     ADMIN = 'admin'
+
+    # GENDER
+    MALE = 'male'
+    FEMALE = 'female'
+    OTHER = 'other'
+
+    # MARITAL STATUS
+    SINGLE = 'single'
+    MARRIED = 'married'
+    DIVORCED = 'divorced'
+    WIDOWED = 'widowed'
+    NOT_SPECIFIED = 'unspecified'
+
+    
     USER_TYPE_CHOICES = (
         (DOCTOR, 'Doctor'),
         (PATIENT, 'Patient'),
         (ADMIN, 'Admin'),
     )
+
+    GENDER_CHOICES = (
+        (MALE, 'Male'),
+        (FEMALE, 'Female'),
+        (OTHER, 'Other'),
+    )
+
+    MARITAL_STATUS_CHOICES = (
+        (NOT_SPECIFIED, 'Not Specified'),
+        (SINGLE, 'Single'),
+        (MARRIED, 'Married'),
+        (DIVORCED, 'Divorced'),
+        (WIDOWED, 'Widowed'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=255, unique=True)
     full_name = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=255, unique=True, blank=True, null=True)
     email = models.EmailField(verbose_name='email address', max_length=255, unique=True)
     address = models.CharField(max_length=255, blank=True, null=True)
+    gender = models.CharField(max_length=8, choices=GENDER_CHOICES, default=OTHER)
+    marital_status = models.CharField(max_length=50, choices=MARITAL_STATUS_CHOICES, default=NOT_SPECIFIED)
+    date_of_birth = models.DateField(blank=True, null=True)
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default=PATIENT)
     about_me = models.TextField(blank=True, null=True)
     staff = models.BooleanField(default=False)
