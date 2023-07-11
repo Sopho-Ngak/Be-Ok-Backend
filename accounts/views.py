@@ -7,10 +7,11 @@ from rest_framework.decorators import action
 
 # Django imports
 from django.conf import settings
+from django.contrib.auth import update_session_auth_hash
 
 # Local imports
 from accounts.serializers import (
-    CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer)
+    CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer, ResetPasswordSerializer, SetNewPasswordSerializer)
 from accounts.models import (User, VerificationCode)
 from utils.generate_code import get_random_code
 from accounts.tasks import send_activation_code_via_email
@@ -37,17 +38,26 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserCreateSerializer
         if self.action == 'edit_profile':
             return UserInfoSerializer
+        elif self.action == "reset_password":
+            if self.request.method == "POST" or self.request.method == "PUT":
+                return ResetPasswordSerializer
+            return SetNewPasswordSerializer
         return super().get_serializer_class()
 
     def get_permissions(self):
-        if self.action == 'account_activation':
+        if self.action in [
+            'account_activation', 
+            'reset_password',
+            'create',
+            'resend_verification_code'
+            ]:
             self.permission_classes = (AllowAny,)
-        if self.action == 'create':
-            self.permission_classes = (AllowAny,)
+        # if self.action == 'create':
+        #     self.permission_classes = (AllowAny,)
         if self.action == 'edit_profile':
             self.permission_classes = (IsAuthenticated,)
-        if self.action == 'resend_verification_code':
-            self.permission_classes = (AllowAny,)
+        # if self.action == 'resend_verification_code':
+        #     self.permission_classes = (AllowAny,)
         return super().get_permissions()
 
     def create(self, request):
@@ -93,6 +103,36 @@ class UserViewSet(viewsets.ModelViewSet):
 
         except VerificationCode.DoesNotExist:
             return Response({'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post', 'patch'], url_path='reset-password')
+    def reset_password(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+                
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            verification_code = VerificationCode.objects.get(
+                code=request.data['code'])
+
+            if verification_code.is_used:
+                return Response({'message': 'OTP already used'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if verification_code.is_expired:
+                verification_code.delete()
+                return Response({'message': 'Verification code expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = verification_code.user
+            user.set_password(request.data['password'])
+            user.save()
+            verification_code.delete()
+            update_session_auth_hash(request, user)
+            return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+
 
     @action(detail=False, methods=['post'], url_path='resend-verfication-code')
     def resend_verification_code(self, request):

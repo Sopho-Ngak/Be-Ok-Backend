@@ -45,11 +45,11 @@ class Patient(models.Model):
     def __str__(self):
         return str(self.patient_username)
     
-    def save(self,) -> None:
+    def save(self, *args, **kwargs) -> None:
         if self.patient_username.gender == User.MALE:
             if self.is_pregnant:
                 raise Exception("This Patient cannot be pregnant")
-        return super().save()
+        return super(Patient, self).save(*args, **kwargs)
 
     class Meta:
         ordering = ['-created_at']
@@ -131,6 +131,7 @@ class PatientDependentReport(models.Model):
     dependent_alergies = models.TextField( blank=True, null=True)
     dependent_symptoms = models.TextField()
     consulted_by_doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='dependent_consultated_by')
+    consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=AI_CONSULTATION, max_length=255, blank=True, null=True)
     dependent_results = models.TextField()
     dependent_prescription = models.TextField(blank=True, null=True)
     dependent_recommended_tests = models.TextField(blank=True, null=True)
