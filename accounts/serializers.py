@@ -2,7 +2,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 from django.utils import timezone
 
-from accounts.models import User, VerificationCode
+from accounts.models import User, VerificationCode, ProfilePicture
 from accounts.tasks import send_activation_code_via_email
 from utils.generate_code import get_random_code
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -44,17 +44,30 @@ class UserCreateSerializer(serializers.ModelSerializer):
             validated_data['username'] = validated_data.get('email').split('@')[0]
         user = User.objects.create(**validated_data)
         return user
+    
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProfilePicture
+        fields = [
+            'id',
+            'user',
+            'image',
+            'created_at',
+        ]
+
 
 class UserInfoSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(read_only=True)
     user_type = serializers.CharField(read_only=True)
     age = serializers.SerializerMethodField(read_only=True)
+    profile_image = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
         fields = [
             'id',
             'username',
+            'profile_image',
             'full_name',
             'email',
             'phone_number',
@@ -72,6 +85,16 @@ class UserInfoSerializer(serializers.ModelSerializer):
         if obj.date_of_birth:
             return timezone.now().year - obj.date_of_birth.year
         return None
+    
+    def get_profile_image(self, obj):
+        # try:
+        instance = ProfilePicture.objects.get(user=obj)
+        request = self.context.get('request')
+        url = request.build_absolute_uri(instance.image.url)
+        # serializers = ProfilePictureSerializer(instance, context={"request":self.context}).data
+        return url
+        # except:
+        #     return None
     
 class ResetPasswordSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
@@ -103,3 +126,5 @@ class SetNewPasswordSerializer(serializers.Serializer):
         if not VerificationCode.objects.filter(code=attrs.get('code')).exists():
             raise serializers.ValidationError("Code is not valid")
         return attrs
+    
+

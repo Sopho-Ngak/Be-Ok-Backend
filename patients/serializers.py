@@ -27,11 +27,10 @@ class PatientInfoSerializer(serializers.ModelSerializer):
         ]
     def get_personal_information(self, obj):
         user = User.objects.get(username=obj)
-        serializer = UserInfoSerializer(user)
+        serializer = UserInfoSerializer(user, context=self.context)
 
         return serializer.data
 
-import uuid
 class PatientReportSerializer(serializers.ModelSerializer):
     consultated_by_doctor = serializers.UUIDField(required=False, allow_null=True)
     patient_username = serializers.UUIDField(required=False, allow_null=True)

@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 
 from doctors.models import Doctor, DoctorDocument
 from patients.models import Patient
-from accounts.models import User, VerificationCode
+from accounts.models import User, VerificationCode, ProfilePicture
 from accounts.tasks import send_activation_code_via_email
 from utils.generate_code import get_random_code
 
@@ -19,6 +19,7 @@ from utils.generate_code import get_random_code
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         user_type = instance.user_type
+        ProfilePicture.objects.get_or_create(user=instance)
 
         if user_type == User.DOCTOR:
             doctor_instance = Doctor.objects.create(user=instance)

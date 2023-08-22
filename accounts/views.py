@@ -11,8 +11,9 @@ from django.contrib.auth import update_session_auth_hash
 
 # Local imports
 from accounts.serializers import (
-    CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer, ResetPasswordSerializer, SetNewPasswordSerializer)
-from accounts.models import (User, VerificationCode)
+    CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer, ResetPasswordSerializer, 
+    SetNewPasswordSerializer, ProfilePictureSerializer)
+from accounts.models import (User, VerificationCode, ProfilePicture)
 from utils.generate_code import get_random_code
 from accounts.tasks import send_activation_code_via_email
 
@@ -42,6 +43,8 @@ class UserViewSet(viewsets.ModelViewSet):
             if self.request.method == "POST" or self.request.method == "PUT":
                 return ResetPasswordSerializer
             return SetNewPasswordSerializer
+        elif self.action == 'profile_picture':
+            return ProfilePictureSerializer
         return super().get_serializer_class()
 
     def get_permissions(self):
@@ -54,8 +57,8 @@ class UserViewSet(viewsets.ModelViewSet):
             self.permission_classes = (AllowAny,)
         # if self.action == 'create':
         #     self.permission_classes = (AllowAny,)
-        if self.action == 'edit_profile':
-            self.permission_classes = (IsAuthenticated,)
+        # if self.action == 'edit_profile':
+        #     self.permission_classes = (IsAuthenticated,)
         # if self.action == 'resend_verification_code':
         #     self.permission_classes = (AllowAny,)
         return super().get_permissions()
@@ -160,3 +163,26 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
+    @action(detail=False, methods=['post', 'delete', 'get'], url_path='profile-picture')
+    def profile_picture(self, request):
+
+        profile_picture_instance, _ = ProfilePicture.objects.get_or_create(user=request.user)
+
+        if request.method == 'GET':
+            serializer = self.get_serializer(profile_picture_instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        if request.method == 'POST':
+            serializer = self.get_serializer(
+                profile_picture_instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'DELETE':
+            profile_picture_instance.delete()
+            default_image = ProfilePicture.objects.create(user=request.user)
+            serializer = self.get_serializer(default_image)
+            return Response(serializer.data, status=status.HTTP_200_OK)

@@ -65,7 +65,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         if request.method == "GET":
             try:
                 instance = Patient.objects.get(patient_username=request.user)
-                serializer = self.get_serializer(instance)
+                serializer = self.get_serializer(instance, context={'request': request})
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Patient.DoesNotExist:
                 return Response({"message": "No patient found"}, status=status.HTTP_200_OK)
