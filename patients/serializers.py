@@ -180,7 +180,7 @@ class PatientSerializer(serializers.ModelSerializer):
     #     return serializer.data
     
     def get_patient_profile(self, obj):
-        serializer = PatientInfoSerializer(obj.patient_username)
+        serializer = PatientInfoSerializer(obj.patient_username, context=self.context)
         return serializer.data
 
 class PatientEditProfileSerializer(serializers.ModelSerializer):

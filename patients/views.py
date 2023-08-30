@@ -87,7 +87,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='get-patient-records')
     def get_patient_records(self, request):
         patient = Patient.objects.get(patient_username=request.user)
-        serializer = PatientSerializer(patient)
+        serializer = PatientSerializer(patient, context={'request': request})
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'], url_path='get-patient-record')
@@ -95,7 +95,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         id = request.GET.get('id')
         try:
             report = PatientReport.objects.get(id=id)
-            serializer = PatientReportSerializer(report)
+            serializer = PatientReportSerializer(report, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except PatientReport.DoesNotExist:
             return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_200_OK)
