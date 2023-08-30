@@ -126,7 +126,8 @@ class PatientDependentReport(models.Model):
     patient_username = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_dependents')
     dependent_names = models.CharField(max_length=255)
     dependent_relationship = models.CharField(choices=RELATIONSHIP_CHOICES ,max_length=255)
-    dependent_age = models.IntegerField()
+    # dependent_age = models.IntegerField()
+    dependent_bithdate = models.DateField(blank=True, null=True)
     dependent_blood_group = models.CharField(max_length=255, blank=True, null=True)
     dependent_alergies = models.TextField( blank=True, null=True)
     dependent_symptoms = models.TextField()
@@ -139,6 +140,7 @@ class PatientDependentReport(models.Model):
     phone_number = models.CharField(max_length=255, blank=True, null=True, unique=True)
     email = models.EmailField(verbose_name='email address', max_length=255, unique=True, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
+    gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default=User.OTHER)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,3 +1,4 @@
+from django.utils import timezone
 # import serializers
 from rest_framework import serializers
 from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE
@@ -8,8 +9,36 @@ from doctors.models import Doctor
 from utils.payment_module import Payment
 
 
+class DependeeInfoSerializer(serializers.ModelSerializer):
+    age = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = PatientDependentReport
+        fields = [
+            'id',
+            'dependent_names',
+            'dependent_relationship',
+            'dependent_bithdate',
+            'age',
+            'gender',
+            'dependent_blood_group',
+            # 'chronic_diseases',
+            'dependent_alergies',
+            'phone_number',
+            'email',
+            'address',
+            'created_at',
+        ]
+
+    def get_age(self, obj):
+        if obj.dependent_bithdate:
+            return  timezone.now().year - obj.dependent_bithdate.year
+        return None
+
+
 class PatientInfoSerializer(serializers.ModelSerializer):
     personal_information = serializers.SerializerMethodField()
+    dependents_profile = DependeeInfoSerializer(
+        source="patient_dependents", many=True, read_only=True)
 
     class Meta:
         model = Patient
@@ -24,12 +53,15 @@ class PatientInfoSerializer(serializers.ModelSerializer):
             'is_pregnant',
             'created_at',
             'personal_information',
+            'dependents_profile',
         ]
+
     def get_personal_information(self, obj):
         user = User.objects.get(username=obj)
         serializer = UserInfoSerializer(user, context=self.context)
 
         return serializer.data
+
 
 class PatientReportSerializer(serializers.ModelSerializer):
     consultated_by_doctor = serializers.UUIDField(required=False, allow_null=True)
@@ -104,7 +136,7 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
             'patient_username',
             "dependent_names",
             "dependent_relationship",
-            "dependent_age",
+            "dependent_bithdate",
             "phone_number",
             "address",
             "email",
@@ -164,7 +196,6 @@ class PatientSerializer(serializers.ModelSerializer):
         source="patient_dependents", many=True, read_only=True)
     # patient_personal_information = serializers.SerializerMethodField()
     patient_profile = serializers.SerializerMethodField()
-
     class Meta:
         model = Patient
         fields = [
