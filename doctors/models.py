@@ -5,6 +5,9 @@ import datetime
 # Django imports
 from django.db import models
 from django.utils import timezone
+from django.utils.html import format_html
+from django.utils.translation import gettext as _
+
 
 # Local imports
 from accounts.models import User
@@ -61,5 +64,31 @@ class DoctorAvailability(models.Model):
             raise ValueError("Please provide starting date and ending date")
             
         super(DoctorAvailability, self).save(*args, **kwargs)
+
+class DiseaseGroup(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+    
+class Disease(models.Model):
+    id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(
+        DiseaseGroup, on_delete=models.CASCADE, related_name='disease_description')
+    name = models.CharField(max_length=255, unique=True)
+    icon = models.ImageField(
+        _("Add disease icon here"), upload_to='diseases_icons', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def disease_icon(self):
+        if self.icon:
+            return format_html('<img src="{}" max-width="100%" height="50px" style="border:5px double #93BD68; padding:2px; margin:5px; border-radius:20px" />'.format(self.icon.url))
+
+    def __str__(self):
+        return self.name
 
 

@@ -1,7 +1,8 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 # Register your models here.
-from doctors.models import Doctor, DoctorDocument, DoctorAvailability
+from doctors.models import Doctor, DoctorDocument, DoctorAvailability, DiseaseGroup, Disease
 
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
@@ -23,3 +24,23 @@ class DoctorDocumentAdmin(admin.ModelAdmin):
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
     list_display = ('doctor', 'starting_date', 'ending_date', 'is_booked')
     list_filter = ('is_booked', 'created_at')
+
+
+
+class Diseases(admin.TabularInline):
+    model = Disease
+    extra = 1
+    fields = ('name', 'icon', 'disease_icon')
+    readonly_fields = ('disease_icon',)
+
+    # def disease_icon(self, obj):
+    #     return format_html(f'<img src="{obj.icon.url}" max-width="100%" height="80px" style="border:5px double #93BD68; padding:2px; margin:5px; border-radius:20px"/>')
+    
+
+
+
+@admin.register(DiseaseGroup)
+class DiseaseGroupAdmin(admin.ModelAdmin):
+    list_display = ('name',"created_at")
+    inlines = [Diseases]
+    search_fields = ('name',)

@@ -10,6 +10,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('patients.urls')),
     path('', include('accounts.urls')),
+    path('', include('doctors.urls')),
 ]
 
 # add static files
