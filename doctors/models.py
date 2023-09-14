@@ -44,26 +44,23 @@ class DoctorDocument(models.Model):
 class DoctorAvailability(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='doctor_availabilities')
-    starting_date = models.DateTimeField(blank=True, null=True)
-    ending_date = models.DateTimeField(blank=True, null=True)
+    starting_date = models.DateTimeField()
+    ending_date = models.DateTimeField()
     is_booked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.doctor)
     
-    def save(self, *args, **kwargs):
-        if self.starting_date and self.ending_date:
-            if self.starting_date >= self.ending_date:
-                raise ValueError("Ending date should be greater than starting date")
+    # def save(self, *args, **kwargs):
+    #     if self.starting_date and self.ending_date:
+    #         if self.starting_date >= self.ending_date:
+    #             raise ValueError("Ending date should be greater than starting date")
             
-            elif self.starting_date < timezone.now():
-                raise ValueError("Starting date should be greater than or egal to current date")
-            
-        if not self.starting_date or not self.ending_date:
-            raise ValueError("Please provide starting date and ending date")
-            
-        super(DoctorAvailability, self).save(*args, **kwargs)
+    #         elif self.starting_date < timezone.now():
+    #             raise ValueError("Starting date should be greater than or egal to current date")
+
+    #     super(DoctorAvailability, self).save(*args, **kwargs)
 
 class DiseaseGroup(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

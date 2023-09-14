@@ -1,10 +1,11 @@
 from django.utils import timezone
 # import serializers
 from rest_framework import serializers
-from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE
+from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE, Appointement
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
-from doctors.models import Doctor
+from doctors.models import Doctor, DoctorAvailability
+from doctors.serializers import MinimumDoctorInfoSerializer, DoctorAvailabilitySerializer
 
 from utils.payment_module import Payment
 
@@ -61,6 +62,23 @@ class PatientInfoSerializer(serializers.ModelSerializer):
         serializer = UserInfoSerializer(user, context=self.context)
 
         return serializer.data
+    
+
+class MinumumPatientInfoSerializer(PatientInfoSerializer):
+
+    class Meta:
+        model = Patient
+        fields = [
+            'blood_group',
+            'alergies',
+            'chronic_diseases',
+            'habits',
+            'current_prescription',
+            'is_pregnant',
+            'personal_information',
+            'created_at',
+        ]
+
 
 
 class PatientReportSerializer(serializers.ModelSerializer):
@@ -255,4 +273,103 @@ class PatientCashInSerializer(serializers.Serializer):
             raise serializers.ValidationError("Enter a valid phone number please")
         return data
 
+class AppointmentSerializer(serializers.ModelSerializer):
     
+    class Meta:
+        model = Appointement
+        fields = [
+            "id",
+            "patient",
+            "doctor",
+            "service",
+            "consultation_type",
+            "consultation_note",
+            "doctor_availability",
+            "is_confirmed",
+            "created_at",
+        ]
+
+    
+    def create(self, validated_data):
+        patient = validated_data.get('patient')
+        doctor = validated_data.get('doctor')
+
+        try:
+            doctor = Doctor.objects.get(user=doctor)
+            available = doctor.doctor_availabilities.get(id=validated_data.get('doctor_availability'))
+        except Doctor.DoesNotExist:
+            raise serializers.ValidationError("Doctor not found")
+        except DoctorAvailability.DoesNotExist:
+            raise serializers.ValidationError("Doctor availability not found")
+        
+        available.is_booked = True
+        available.save()
+
+        appointment = Appointement.objects.create(**validated_data)
+        
+        return appointment
+    
+class PatientAppointmentInfoSerializer(serializers.ModelSerializer):
+    doctor_profile = serializers.SerializerMethodField()
+    doctor_availability_details = serializers.SerializerMethodField()
+    appointement_happen_in = serializers.SerializerMethodField()
+    
+
+    class Meta:
+        model = Appointement
+        fields = [
+            "id",
+            "service",
+            "consultation_type",
+            "consultation_note",
+            "is_confirmed",
+            "created_at",
+            "doctor_profile",
+            "doctor_availability"
+            
+
+        ]
+
+    def get_doctor_profile(self, obj):
+        serializer = MinimumDoctorInfoSerializer(obj.doctor, context=self.context)
+        return serializer.data
+    
+    def getdoctor_availability_details(self, obj):
+        serializer = DoctorAvailabilitySerializer(obj.doctor_availability, context=self.context)
+        return serializer.data
+    
+    def get_appointement_happen_in(self, obj):
+        return obj.happend_in()
+    
+class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
+    patient = serializers.SerializerMethodField()
+    doctor_availability = serializers.SerializerMethodField()
+    appointment_happend_in = serializers.SerializerMethodField()
+    class Meta:
+        model = Appointement
+        fields = [
+            'id',  
+            'doctor', 
+            'service', 
+            'consultation_type', 
+            'consultation_note',
+            "appointment_happend_in",
+            'is_confirmed',
+            'created_at', 
+            'doctor_availability', 
+            'patient', 
+            ]
+    
+    def get_patient(self, obj):
+        serializer = MinumumPatientInfoSerializer(obj.patient, context=self.context)
+        return serializer.data
+    
+
+    
+    def get_doctor_availability(self, obj):
+        serializer = DoctorAvailabilitySerializer(obj.doctor_availability)
+        return serializer.data
+    
+    def get_appointment_happend_in(self, obj):
+        return obj.happend_in()
+

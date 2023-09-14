@@ -198,7 +198,7 @@ class Appointement(models.Model):
         return self.doctor_availability.ending_date
     
     def happend_in(self):
-        time_remaining = self.end_date - timezone.now()
+        time_remaining = self.start_date - timezone.now()
 
         data = {
             'days': time_remaining.days,
