@@ -7,10 +7,10 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('patients.urls')),
-    path('', include('accounts.urls')),
-    path('', include('doctors.urls')),
+   path('dashboard/', admin.site.urls),
+   path('', include('patients.urls')),
+   path('', include('accounts.urls')),
+   path('', include('doctors.urls')),
 ]
 
 # add static files

@@ -6,6 +6,9 @@ from accounts.models import User, VerificationCode, ProfilePicture
 from accounts.tasks import send_activation_code_via_email
 from utils.generate_code import get_random_code
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    default_error_messages = {
+        'no_active_account': 'User not found or invalid credentials (Make sure your account is activated)',
+    }
     def validate(self, attrs):
         data = super().validate(attrs)
         refresh = self.get_token(self.user)
