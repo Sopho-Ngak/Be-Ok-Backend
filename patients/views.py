@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 # Local imports
 from patients.models import Patient, PatientReport, PatientDependentReport
 from doctors.models import Doctor
+from doctors.permissions import IsDoctor, IsDoctorAndProfileOwner
 from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   PatientPaymentStatusSerializer, PatientCashInSerializer)
 from utils.ai_call import get_patient_result_from_ai
@@ -53,6 +54,12 @@ class PatientViewSet(viewsets.ModelViewSet):
                 return PatientCashInSerializer
         
         return super().get_serializer_class()
+    
+    def get_permissions(self):
+        if self.action == 'create_patient_result' and self.request.GET.get('type') == 'doctor':
+            self.permission_classes = [IsAuthenticated, IsDoctor]
+        return super().get_permissions()
+        
 
     @action(detail=False, methods=['get'])
     def search(self, request):
@@ -131,6 +138,10 @@ class PatientViewSet(viewsets.ModelViewSet):
     def create_patient_result(self, request):
         choice = request.GET.get('choice')
         consultation_choice = request.GET.get('type')
+
+        if request.GET.get('type') not in ['ai', 'doctor']:
+            return Response({'message': 'Please select correct consultation type'}, status=status.HTTP_400_BAD_REQUEST)
+        
         dianostic_text = settings.PATIENT_CONSTANTS.messages.DIANOSTIC_TEXT
         prescription_text = settings.PATIENT_CONSTANTS.messages.PRESCRIPTION_TEXT
         recommendation_text = settings.PATIENT_CONSTANTS.messages.RECOMMENDATION_TEXT
@@ -142,14 +153,20 @@ class PatientViewSet(viewsets.ModelViewSet):
             request.data['pain_area'] = 'Unknown'
       
         try:
+            if consultation_choice.lower() == 'doctor':
+                if not request.data.get('patient_username'):
+                    return Response({'error': 'patient is required'}, status=status.HTTP_400_BAD_REQUEST)
+            # doctor = Doctor.objects.get(doctor_username=request.user)
+            # request.data['doctor'] = doctor.id
             patient = Patient.objects.get(patient_username=request.user)
         except Patient.DoesNotExist:
-            raise Response({'error': settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIST}, status=status.HTTP_400_BAD_REQUEST)
-        if choice == 'Myself':
+            return Response({'error': settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIST}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if choice.lower() == 'myself':
             # if not request.data.get('symptoms'):
             #     return Response({'error': 'Please enter your symptoms'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if consultation_choice == 'ai':
+            if consultation_choice.lower() == 'ai':
             
                 if not patient.blood_group == '--':
                     dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"

@@ -82,14 +82,16 @@ class MinumumPatientInfoSerializer(PatientInfoSerializer):
 
 
 class PatientReportSerializer(serializers.ModelSerializer):
-    consultated_by_doctor = serializers.UUIDField(required=False, allow_null=True)
+    consultated_by_doctor = serializers.UUIDField(required=False, allow_null=True, read_only=True)
     patient_username = serializers.UUIDField(required=False, allow_null=True)
+    personal_information = serializers.SerializerMethodField()
 
     class Meta:
         model = PatientReport
         fields = [
             'id',
             'patient_username',
+            'personal_information',
             'pain_area',
             'symptoms',
             'consultated_by_doctor',
@@ -100,58 +102,71 @@ class PatientReportSerializer(serializers.ModelSerializer):
             'recommendation',
             'created_at',
         ]
-    def create(self, validated_data):
-        patient_id = validated_data.pop('patient_username', None)
-        doctor = validated_data.pop('consultated_by_doctor', None)
+
+    def get_personal_information(self, obj):
+        user = User.objects.get(username=obj)
+        profile_serializer = UserInfoSerializer(user, context=self.context)
+        medical_serializer = PatientEditProfileSerializer(obj.patient_username, context=self.context)
+        data = {
+            "profile": profile_serializer.data,
+            "medical": medical_serializer.data
+        }
+
+        return data
+    # def create(self, validated_data):
+    #     patient_id = validated_data.pop('patient_username', None)
+    #     doctor = validated_data.pop('consultated_by_doctor', None)
         
-        if not patient_id:
-            try:
-                user_id = self.context['request'].user.id
-                patient = Patient.objects.get(patient_username__id=str(user_id))
-            except Patient.DoesNotExist:
-                raise serializers.ValidationError("Patient not found")
+    #     if not patient_id:
+    #         try:
+    #             user_id = self.context['request'].user.id
+    #             patient = Patient.objects.get(patient_username__id=str(user_id))
+    #         except Patient.DoesNotExist:
+    #             raise serializers.ValidationError("Patient not found")
             
-        elif patient_id and not doctor:
-            doctor = self.context['request'].user.id
-            patient = Patient.objects.get(id=str(patient_id))
-        else:
-            # AI consultation
-            try:
-                patient = Patient.objects.get(id=str(patient_id))
-            except User.DoesNotExist:
-                raise serializers.ValidationError("Patient not found")
+    #     elif patient_id and not doctor:
+    #         doctor = self.context['request'].user.id
+    #         patient = Patient.objects.get(id=str(patient_id))
+    #     else:
+    #         # AI consultation
+    #         try:
+    #             patient = Patient.objects.get(id=str(patient_id))
+    #         except User.DoesNotExist:
+    #             raise serializers.ValidationError("Patient not found")
             
 
-        if not doctor:
-            doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
-            consultated_by = Doctor.objects.get(user=doctor)
-        else:
-            # consultated_by = validated_data.get('consultated_by_doctor')
-            try:
-                consultated_by = Doctor.objects.get(user__id=str(doctor))
-                if not validated_data.get('consultation_type'):
-                    validated_data['consultation_type'] = ONLINE
-            except Doctor.DoesNotExist:
-                raise serializers.ValidationError("Only doctors can consult patients")
+    #     if not doctor:
+    #         doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
+    #         consultated_by = Doctor.objects.get(user=doctor)
+    #     else:
+    #         # consultated_by = validated_data.get('consultated_by_doctor')
+    #         try:
+    #             consultated_by = Doctor.objects.get(user__id=str(doctor))
+    #             if not validated_data.get('consultation_type'):
+    #                 validated_data['consultation_type'] = ONLINE
+    #         except Doctor.DoesNotExist:
+    #             raise serializers.ValidationError("Only doctors can consult patients")
 
-        if consultated_by.user == patient.patient_username:
-            raise serializers.ValidationError("You can't consult yourself.")
+    #     if consultated_by.user == patient.patient_username:
+    #         raise serializers.ValidationError("You can't consult yourself.")
 
-        instance = PatientReport.objects.create(patient_username=patient, consultated_by_doctor=consultated_by, **validated_data)
-        return instance
+    #     instance = PatientReport.objects.create(patient_username=patient, consultated_by_doctor=consultated_by, **validated_data)
+    #     return instance
 
 
 class PatientDependentReportSerializer(serializers.ModelSerializer):
     # user = serializers.CharField(read_only=True)
     consulted_by_doctor = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     dependent_relationship = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    patient_username = serializers.UUIDField(required=False, allow_null=True)
+    patient_username = serializers.UUIDField(required=False, allow_null=True, read_only=True)
+    account_holder = serializers.SerializerMethodField()
     
     class Meta:
         model = PatientDependentReport
         fields = [
             'id',
             'patient_username',
+            'account_holder',
             "dependent_names",
             "dependent_relationship",
             "dependent_bithdate",
@@ -169,42 +184,48 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
             'dependent_recommendation',
             'created_at',
         ]
+    
+    def get_account_holder(self, obj):
+        user = User.objects.get(username=obj)
+        serializer = UserInfoSerializer(user, context=self.context)
 
-    def create(self, validated_data):
-        user_id = self.context['request'].user.id
-        account_holder = validated_data.pop('patient_username', None)
+        return serializer.data
 
-        if not account_holder:
-            # AI consultation
-            doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
-            consultated_by = Doctor.objects.get(user=doctor)
+    # def create(self, validated_data):
+    #     user_id = self.context['request'].user.id
+    #     account_holder = validated_data.pop('patient_username', None)
 
-            patient = Patient.objects.get(patient_username__id=user_id)
+    #     if not account_holder:
+    #         # AI consultation
+    #         doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
+    #         consultated_by = Doctor.objects.get(user=doctor)
 
-        elif account_holder:
-            consultated_by = self.context['request'].user.id
-            try:
-                consultated_by = Doctor.objects.get(user__id=str(consultated_by))
-                patient = Patient.objects.get(id=str(account_holder))
-                if not validated_data.get('consultation_type'):
-                    validated_data['consultation_type'] = ONLINE
-            except Patient.DoesNotExist:
-                raise serializers.ValidationError("Patient not found")
-            except Doctor.DoesNotExist:
-                raise serializers.ValidationError("Only doctors can consult patients")
-        else:
-            raise serializers.ValidationError("A dependee should have dependents who is the account holder")            
+    #         patient = Patient.objects.get(patient_username__id=user_id)
+
+    #     elif account_holder:
+    #         consultated_by = self.context['request'].user.id
+    #         try:
+    #             consultated_by = Doctor.objects.get(user__id=str(consultated_by))
+    #             patient = Patient.objects.get(id=str(account_holder))
+    #             if not validated_data.get('consultation_type'):
+    #                 validated_data['consultation_type'] = ONLINE
+    #         except Patient.DoesNotExist:
+    #             raise serializers.ValidationError("Patient not found")
+    #         except Doctor.DoesNotExist:
+    #             raise serializers.ValidationError("Only doctors can consult patients")
+    #     else:
+    #         raise serializers.ValidationError("A dependee should have dependents who is the account holder")            
         
-        # if not validated_data.get('consultated_by_doctor'):
-        #     doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
-        #     consultated_by = Doctor.objects.get(user=doctor)
-        # else:
-        #     consultated_by = validated_data.get('consultated_by_doctor')
+    #     # if not validated_data.get('consultated_by_doctor'):
+    #     #     doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
+    #     #     consultated_by = Doctor.objects.get(user=doctor)
+    #     # else:
+    #     #     consultated_by = validated_data.get('consultated_by_doctor')
 
-        # patient = Patient.objects.get(patient_username=user)
-        instance = PatientDependentReport.objects.create(
-            patient_username=patient, consulted_by_doctor=consultated_by, dependent_relationship=self.context['request'].GET.get("choice"), **validated_data)
-        return instance
+    #     # patient = Patient.objects.get(patient_username=user)
+    #     instance = PatientDependentReport.objects.create(
+    #         patient_username=patient, consulted_by_doctor=consultated_by, dependent_relationship=self.context['request'].GET.get("choice"), **validated_data)
+    #     return instance
 
 
 class PatientSerializer(serializers.ModelSerializer):

@@ -16,8 +16,8 @@ from doctors.permissions import IsDoctor, IsDoctorAndProfileOwner
 from doctors.serializers import (
     DiseaseGroupSerializer, DiseaseSerializer, DoctorDocumentSerializer, DoctorAvailabilitySerializer, DoctorInfoSerializer,
     DoctorSerializer)
-from patients.models import Appointement
-from patients.serializers import DoctorAppointmentInfoSerializer
+from patients.models import Appointement, PatientReport, PatientDependentReport, Patient
+from patients.serializers import DoctorAppointmentInfoSerializer, PatientReportSerializer, PatientDependentReportSerializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated,])
@@ -46,6 +46,14 @@ class DoctorViewSet(viewsets.ModelViewSet):
                 return DoctorAvailabilitySerializer
             case 'doctor_appointments':
                 return DoctorAppointmentInfoSerializer
+            case 'doctor_consultation':
+                match self.request.method:
+                    case 'GET' | 'POST' | 'PATCH':
+                        match self.request.query_params.get('consult_type'):
+                            case 'patient':
+                                return PatientReportSerializer
+                            case 'dependent':
+                                return PatientDependentReportSerializer
             case _:
                 return super().get_serializer_class()
     
@@ -64,6 +72,8 @@ class DoctorViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated, IsDoctorAndProfileOwner]
         elif self.action == 'doctor_appointments':
             self.permission_classes = [IsAuthenticated, IsDoctorAndProfileOwner]
+        elif self.action == 'doctor_consultation':
+            self.permission_classes = [IsAuthenticated, IsDoctor]
         return super().get_permissions()
     
     @action(detail=False, methods=['get'], url_path='search-doctor')
@@ -138,6 +148,96 @@ class DoctorViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Appointement.DoesNotExist:
                 return Response({'message': 'No appointment found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    @action(detail=False, methods=['get', 'post', 'patch'], url_path='consultation')
+    def doctor_consultation(self, request):
+        if request.method == 'GET':
+            consult_id = request.query_params.get('consult_id')
+            consult_type = request.query_params.get('consult_type')
+
+            if consult_id:            
+                if consult_type not in ['patient', 'dependent']:
+                    return Response({'message': 'Please provide correct consultation type'}, status=status.HTTP_400_BAD_REQUEST)
+            
+                try:
+                    if consult_type == 'patient':
+                        consultation = PatientReport.objects.get(id=consult_id)
+                        serializer = self.get_serializer(consultation)
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                    elif consult_type == 'dependent':
+                        consultation = PatientDependentReport.objects.get(id=consult_id)
+                        serializer = self.get_serializer(consultation)
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                except PatientReport.DoesNotExist:
+                    return Response({'message': 'No consultation found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+                except PatientDependentReport.DoesNotExist:
+                    return Response({'message': 'No consultation found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            patient_consulted_by = PatientReport.objects.filter(consultated_by_doctor__user=request.user)
+            dependent_consulted_by = PatientDependentReport.objects.filter(consulted_by_doctor__user=request.user)
+            patien_serializer = PatientReportSerializer(patient_consulted_by, many=True, context={'request': request})
+            dependent_serializer = PatientDependentReportSerializer(dependent_consulted_by, many=True, context={'request': request})
+            
+            return Response(
+                {
+                    'patient': patien_serializer.data, 
+                    'dependent': dependent_serializer.data
+                }, 
+                status=status.HTTP_200_OK
+                )
+        
+        elif request.method == 'POST':
+            '''
+            Doctor making consultation
+            '''
+            if not request.query_params.get('consult_type'):
+                return Response({'message': 'Please provide consultation type'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                # if request.query_params.get('consult_type') == 'patient':
+                patient = Patient.objects.get(id=request.data.get('patient_username'))
+                # elif request.query_params.get('consult_type') == 'dependent':
+                #     patient = Patient.objects.get(id=request.data.get('dependent'))
+            except Patient.DoesNotExist:
+                return Response({'message': 'No patient found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(consulted_by_doctor=Doctor.objects.get(user=request.user), patient_username=patient)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        elif request.method == 'PATCH':
+            '''
+            Doctor updating consultation
+            '''
+            consult_id = request.query_params.get('consult_id')
+            consult_type = request.query_params.get('consult_type')
+
+            if consult_type not in ['patient', 'dependent']:
+                return Response({'message': 'Please provide correct consultation type'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not consult_id:
+                return Response({'message': 'Please provide consultation id'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                if consult_type == 'patient':
+                    consultation = PatientReport.objects.get(id=consult_id)
+                    serializer = self.get_serializer(consultation, data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save(consultated_by_doctor=Doctor.objects.get(user=request.user))
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                elif consult_type == 'dependent':
+                    consultation = PatientDependentReport.objects.get(id=consult_id)
+                    serializer = self.get_serializer(consultation, data=request.data, partial=True)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+            except PatientReport.DoesNotExist:
+                return Response({'message': 'No consultation found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            except PatientDependentReport.DoesNotExist:
+                return Response({'message': 'No consultation found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+
         
     @action(detail=False, methods=['patch', 'post', 'get'], url_path='availabilities')
     def doctor_availabilities(self, request):

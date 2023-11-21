@@ -11,9 +11,9 @@ from django.utils import timezone
 from accounts.models import User
 from doctors.models import Doctor, DoctorAvailability
 
-AI_CONSULTATION = 'AI'
-IN_PERSON = 'In Person'
-ONLINE = 'Online'
+AI_CONSULTATION = 'ai'
+IN_PERSON = 'inperson'
+ONLINE = 'online'
 
 CONSULTATION_TYPE = (
     (AI_CONSULTATION, 'AI Consultation'),
@@ -144,7 +144,7 @@ class PatientDependentReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return str(self.dependent_names)
+        return str(self.patient_username)
 
     class Meta:
         ordering = ['-created_at']
