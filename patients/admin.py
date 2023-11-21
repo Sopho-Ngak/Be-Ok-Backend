@@ -16,17 +16,17 @@ class PatientAdmin(admin.ModelAdmin):
 
 @admin.register(PatientReport)
 class PatientReportAdmin(admin.ModelAdmin):
-    list_display = ('patient_username', 'consultated_by_doctor', 'consultation_type', 'pain_area', )
+    list_display = ('patient_username', 'consulted_by_doctor', 'consultation_type', 'pain_area', )
     list_filter = ('consultation_type', 'created_at')
     search_fields = (
         'patient_username__user__username', 
         'patient_username__user__full_name', 
         'patient_username__user__email', 
         'patient_username__user__phone_number', 
-        'consultated_by_doctor__user__username', 
-        'consultated_by_doctor__user__full_name', 
-        'consultated_by_doctor__user__email', 
-        'consultated_by_doctor__user__phone_number',
+        'consulted_by_doctor__user__username', 
+        'consulted_by_doctor__user__full_name', 
+        'consulted_by_doctor__user__email', 
+        'consulted_by_doctor__user__phone_number',
         )
     
 @admin.register(PatientDependentReport)

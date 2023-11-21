@@ -173,7 +173,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
                 except PatientDependentReport.DoesNotExist:
                     return Response({'message': 'No consultation found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            patient_consulted_by = PatientReport.objects.filter(consultated_by_doctor__user=request.user)
+            patient_consulted_by = PatientReport.objects.filter(consulted_by_doctor__user=request.user)
             dependent_consulted_by = PatientDependentReport.objects.filter(consulted_by_doctor__user=request.user)
             patien_serializer = PatientReportSerializer(patient_consulted_by, many=True, context={'request': request})
             dependent_serializer = PatientDependentReportSerializer(dependent_consulted_by, many=True, context={'request': request})
@@ -224,7 +224,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
                     consultation = PatientReport.objects.get(id=consult_id)
                     serializer = self.get_serializer(consultation, data=request.data, partial=True)
                     serializer.is_valid(raise_exception=True)
-                    serializer.save(consultated_by_doctor=Doctor.objects.get(user=request.user))
+                    serializer.save(consulted_by_doctor=Doctor.objects.get(user=request.user))
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 elif consult_type == 'dependent':
                     consultation = PatientDependentReport.objects.get(id=consult_id)

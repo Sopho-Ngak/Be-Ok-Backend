@@ -14,7 +14,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 # Local imports
 from patients.models import Patient, PatientReport, PatientDependentReport
 from doctors.models import Doctor
-from doctors.permissions import IsDoctor, IsDoctorAndProfileOwner
+from accounts.models import User
+from patients.permissions import IsPatient, IsDoctorOrPatient
 from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   PatientPaymentStatusSerializer, PatientCashInSerializer)
 from utils.ai_call import get_patient_result_from_ai
@@ -36,7 +37,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     #     return [AllowAny()]
 
     def get_serializer_class(self):
-        if self.action == 'create_patient_result':
+        if self.action == 'ai_consultation':
             return PatientReportSerializer
         elif self.action == 'get_patient_record':
             return PatientSerializer
@@ -56,8 +57,8 @@ class PatientViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
     
     def get_permissions(self):
-        if self.action == 'create_patient_result' and self.request.GET.get('type') == 'doctor':
-            self.permission_classes = [IsAuthenticated, IsDoctor]
+        if self.action == 'ai_consultation':
+            self.permission_classes = [IsAuthenticated, IsPatient]
         return super().get_permissions()
         
 
@@ -135,13 +136,9 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     
     @action(detail=False, methods=['post'], url_path='consult-doctor')
-    def create_patient_result(self, request):
+    def ai_consultation(self, request):
         choice = request.GET.get('choice')
-        consultation_choice = request.GET.get('type')
-
-        if request.GET.get('type') not in ['ai', 'doctor']:
-            return Response({'message': 'Please select correct consultation type'}, status=status.HTTP_400_BAD_REQUEST)
-        
+ 
         dianostic_text = settings.PATIENT_CONSTANTS.messages.DIANOSTIC_TEXT
         prescription_text = settings.PATIENT_CONSTANTS.messages.PRESCRIPTION_TEXT
         recommendation_text = settings.PATIENT_CONSTANTS.messages.RECOMMENDATION_TEXT
@@ -151,78 +148,76 @@ class PatientViewSet(viewsets.ModelViewSet):
                 dianostic_text += f"Patient's pain area is {request.data.get('pain_area')}. \n"
         else:
             request.data['pain_area'] = 'Unknown'
-      
-        try:
-            if consultation_choice.lower() == 'doctor':
-                if not request.data.get('patient_username'):
-                    return Response({'error': 'patient is required'}, status=status.HTTP_400_BAD_REQUEST)
-            # doctor = Doctor.objects.get(doctor_username=request.user)
-            # request.data['doctor'] = doctor.id
-            patient = Patient.objects.get(patient_username=request.user)
-        except Patient.DoesNotExist:
-            return Response({'error': settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIST}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if choice.lower() == 'myself':
-            # if not request.data.get('symptoms'):
-            #     return Response({'error': 'Please enter your symptoms'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if consultation_choice.lower() == 'ai':
+        patient = Patient.objects.get(patient_username=request.user)
+        doctor, created = User.objects.get_or_create(username="Dr Emile", user_type=User.DOCTOR)
+        consultated_by = Doctor.objects.get(user=doctor)
+      
+        if choice.lower() == 'myself':
+
+            if not patient.blood_group == '--':
+                dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
+            elif patient.alergies:
+                prescription_text += f"Patient's alergies are {patient.alergies}. \n"
             
-                if not patient.blood_group == '--':
-                    dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
-                elif patient.alergies:
-                    prescription_text += f"Patient's alergies are {patient.alergies}. \n"
-                
-                patient_result = get_patient_result_from_ai(dianostic_text+request.data.get('symptoms'))
-                prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('symptoms'))
-                recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('symptoms'))
-                recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('symptoms'))
-                # patient_result = "Test 1, Test 2, Test 3"
-                # prescription_result = "Test 1, Test 2, Test 3"
-                # recommendation_result = "Test 1, Test 2, Test 3"
-                # recommended_tests_result = "Test 1, Test 2, Test 3"
-                if patient_result:
-                    request.data['results'] = patient_result
-                    request.data['prescription'] = prescription_result
-                    request.data['recommendation'] = recommendation_result
-                    request.data['recommended_tests'] = recommended_tests_result
+            patient_result = get_patient_result_from_ai(dianostic_text+request.data.get('symptoms'))
+            prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('symptoms'))
+            recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('symptoms'))
+            recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('symptoms'))
+           
+            # patient_result = "Test 1, Test 2, Test 3"
+            # prescription_result = "Test 1, Test 2, Test 3"
+            # recommendation_result = "Test 1, Test 2, Test 3"
+            # recommended_tests_result = "Test 1, Test 2, Test 3"
+
+            if patient_result:
+                request.data['results'] = patient_result
+                request.data['prescription'] = prescription_result
+                request.data['recommendation'] = recommendation_result
+                request.data['recommended_tests'] = recommended_tests_result
 
             serializer = self.get_serializer(data=request.data, context={'request': request})
             serializer.is_valid(raise_exception=True)
-            serializer.save()
+            serializer.save(
+                consulted_by_doctor=consultated_by,
+                patient_username=Patient.objects.get(patient_username=request.user))
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         elif choice:
-            if consultation_choice == 'ai':
-                if request.data.get("dependent_blood_group") and request.data.get("dependent_alergies"):
-                    dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')} and alergies are {request.data.get('dependent_alergies')}. \n"
-                elif request.data.get("dependent_blood_group"):
-                    dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')}. \n"
-                elif request.data.get("dependent_alergies"):
-                    prescription_text += f"Patient's alergies are {request.data.get('dependent_alergies')}. \n"
-                if request.data.get("dependent_age"):
-                    prescription_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
+            if request.data.get("dependent_blood_group") and request.data.get("dependent_alergies"):
+                dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')} and alergies are {request.data.get('dependent_alergies')}. \n"
+            elif request.data.get("dependent_blood_group"):
+                dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')}. \n"
+            elif request.data.get("dependent_alergies"):
+                prescription_text += f"Patient's alergies are {request.data.get('dependent_alergies')}. \n"
+            if request.data.get("dependent_age"):
+                prescription_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
 
-                dependent_result = get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))
-                dependent_prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))
-                dependent_recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))
-                dependent_recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))
-                # dependent_result = "get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))"
-                # dependent_prescription_result = "et_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))"
-                # dependent_recommendation_result = "get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))"
-                # dependent_recommended_tests_result = "get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))"
-                
-                if dependent_result:
-                    request.data['dependent_results'] = dependent_result
-                    request.data['dependent_prescription'] = dependent_prescription_result
-                    request.data['dependent_recommendation'] = dependent_recommendation_result
-                    request.data['dependent_recommended_tests'] = dependent_recommended_tests_result
-                else:
+            dependent_result = get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))
+            dependent_prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))
+            dependent_recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))
+            dependent_recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))
+            
+            
+            # dependent_result = "get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))"
+            # dependent_prescription_result = "et_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))"
+            # dependent_recommendation_result = "get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))"
+            # dependent_recommended_tests_result = "get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))"
+            
+            if dependent_result:
+                request.data['dependent_results'] = dependent_result
+                request.data['dependent_prescription'] = dependent_prescription_result
+                request.data['dependent_recommendation'] = dependent_recommendation_result
+                request.data['dependent_recommended_tests'] = dependent_recommended_tests_result
+            else:
                     return Response({'message': settings.PATIENT_CONSTANTS.messages.AI_ERROR_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
             serializer = PatientDependentReportSerializer(data=request.data, context={'request': request})
             serializer.is_valid(raise_exception=True)
-            serializer.save()
+            serializer.save(
+                consulted_by_doctor=consultated_by,
+                patient_username=Patient.objects.get(patient_username=request.user))
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
         else:
             return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
         
