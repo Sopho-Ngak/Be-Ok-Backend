@@ -26,13 +26,21 @@ class Chat(models.Model):
 
 class Message(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    doctor = models.ForeignKey(
-        User, on_delete=models.SET_NULL, related_name="chat_doctor", blank=True, null=True
+    sender = models.ForeignKey(
+        User, on_delete=models.SET_NULL, related_name="user_sender", blank=True, null=True
     )
-    patient = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="chat_patient", blank=True, null=True
+    receiver = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="user_receiver", blank=True, null=True
     )
-    message = models.ManyToManyField(
-        Chat, blank=True, related_name="messages"
+    chats = models.ManyToManyField(
+        Chat, blank=True, related_name="users_chat"
     )
     created_on = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Chat")
+        verbose_name_plural = _("Chats")
+        ordering = ('-created_on', )
+
+    def __str__(self):
+        return f"{self.sender} - {self.receiver}"

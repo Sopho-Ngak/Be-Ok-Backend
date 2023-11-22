@@ -11,6 +11,7 @@ urlpatterns = [
    path('', include('patients.urls')),
    path('', include('accounts.urls')),
    path('', include('doctors.urls')),
+   path('', include('chats.urls')),
 ]
 
 # add static files
