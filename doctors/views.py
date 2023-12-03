@@ -74,6 +74,8 @@ class DoctorViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated, IsDoctorAndProfileOwner]
         elif self.action == 'doctor_consultation':
             self.permission_classes = [IsAuthenticated, IsDoctor]
+        elif self.action == 'get_all_doctors':
+            self.permission_classes = [IsAuthenticated, ]
         return super().get_permissions()
     
     @action(detail=False, methods=['get'], url_path='search-doctor')
@@ -119,7 +121,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @action(detail=False, methods=['get', 'patch'], url_path='appointments')
     def doctor_appointments(self, request):
         if request.method == 'GET':

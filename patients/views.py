@@ -12,12 +12,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
 # Local imports
-from patients.models import Patient, PatientReport, PatientDependentReport
-from doctors.models import Doctor
+from patients.models import Patient, PatientReport, PatientDependentReport, Appointement
+from doctors.models import Doctor, DoctorAvailability
 from accounts.models import User
+from accounts.serializers import UserInfoSerializer
 from patients.permissions import IsPatient, IsDoctorOrPatient
 from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
-                                  PatientPaymentStatusSerializer, PatientCashInSerializer)
+                                  PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer)
+from doctors.serializers import (
+    DoctorInfoSerializer)
 from utils.ai_call import get_patient_result_from_ai
 from utils.payment_module import Payment
 #from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
@@ -67,6 +70,13 @@ class PatientViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset()
         serializer = PatientSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], url_path='doctors')
+    def get_all_doctors(self, request):
+        if request.method == 'GET':
+            doctors = Doctor.objects.all()
+            serializer = DoctorInfoSerializer(doctors, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get', 'patch'], url_path='profile')
     def patient_profile(self, request):
@@ -134,6 +144,23 @@ class PatientViewSet(viewsets.ModelViewSet):
         except PatientDependentReport.DoesNotExist:
             return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_200_OK)    
 
+    @action(detail=False, methods=['post'], url_path='appointment')
+    def book_appointment(self, request):
+        try:
+            if request.method == 'POST':
+                appointment = Appointement()
+                appointment.patient = Patient.objects.get(patient_username=request.user)
+                appointment.doctor = Doctor.objects.get(id=request.data.get('doctor_id'))
+                appointment.service = request.data.get('service')
+                appointment.doctor_availability = DoctorAvailability.objects.get(id=request.data.get('doctor_availability'))
+                appointment.consultation_type = request.data.get('consultation_type')
+                appointment.is_confirmed = False
+                appointment.consultation_note = request.data.get('consultation_note')
+                appointment.save()
+                serializer = AppointmentSerializer(appointment, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post'], url_path='consult-doctor')
     def ai_consultation(self, request):
