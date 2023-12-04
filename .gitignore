@@ -17,3 +17,9 @@ ai_error.log
 media/*
 !/media/default/
 !/media/default/**
+
+# Environment
+.env
+
+#Virtual Environment
+beokay/
