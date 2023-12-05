@@ -42,7 +42,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
             case 'doctor_documents':
                 return DoctorDocumentSerializer
             
-            case 'doctor_availabilities':
+            case 'doctor_availabilities' | 'available_doctors':
                 return DoctorAvailabilitySerializer
             case 'doctor_appointments':
                 return DoctorAppointmentInfoSerializer
@@ -63,7 +63,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
                 self.permission_classes = [IsAuthenticated, ]
             else:
                 self.permission_classes = [IsAuthenticated, IsDoctorAndProfileOwner]
-        elif self.action == 'doctor_profile':
+        elif self.action in ['doctor_profile','available_doctors']:
             if self.request.method == 'GET':
                 self.permission_classes = [IsAuthenticated, ]
             else:
@@ -285,3 +285,12 @@ class DoctorViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except DoctorAvailability.DoesNotExist:
                 return Response({'message': 'No availability found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    @action(detail=False, methods=['get'], url_path='available-doctors')
+    def available_doctors(self, request):
+        '''
+        Get all available doctors
+        '''
+        availabilities = DoctorAvailability.objects.filter(is_booked=False, ending_date__gte=timezone.now())
+        serializer = self.get_serializer(availabilities, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
