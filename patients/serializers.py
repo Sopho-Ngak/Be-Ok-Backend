@@ -220,40 +220,71 @@ class PatientCashInSerializer(serializers.Serializer):
         return data
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    is_confirmed = serializers.BooleanField(read_only=True)
+    patient = serializers.UUIDField(default=serializers.CurrentUserDefault())
+    patient_profile = serializers.SerializerMethodField()
+    doctor_profile = serializers.SerializerMethodField()
+    doctor_availability_details = serializers.SerializerMethodField()
+    appointement_happen_in = serializers.SerializerMethodField()
     
     class Meta:
         model = Appointement
         fields = [
             "id",
             "patient",
+            "patient_profile",
             "doctor",
+            "doctor_profile",
+            "doctor_availability_details",
             "service",
             "consultation_type",
             "consultation_note",
             "doctor_availability",
             "is_confirmed",
+            "appointement_happen_in",
             "created_at",
         ]
 
     
     def create(self, validated_data):
-        patient = validated_data.get('patient')
-        doctor = validated_data.get('doctor')
 
         try:
-            doctor = Doctor.objects.get(user=doctor)
-            available = doctor.doctor_availabilities.get(id=validated_data.get('doctor_availability'))
-        except Doctor.DoesNotExist:
-            raise serializers.ValidationError("Doctor not found")
+            available = validated_data.get('doctor').doctor_availabilities.get(id=validated_data.get('doctor_availability').id, is_booked=False)
+            patient = Patient.objects.get(patient_username__id=validated_data.get('patient').id)
         except DoctorAvailability.DoesNotExist:
-            raise serializers.ValidationError("Doctor availability not found")
+            raise serializers.ValidationError("Doctor availability not found or already booked")
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Patient not found")
         
+        appointment = Appointement.objects.create(
+            doctor=validated_data.get('doctor'),
+            patient=patient,
+            doctor_availability=available,
+            service=validated_data.get('service'),
+            consultation_type=validated_data.get('consultation_type'),
+            consultation_note=validated_data.get('consultation_note'),
+        )
         available.is_booked = True
         available.save()
-
-        appointment = Appointement.objects.create(**validated_data)
         
         return appointment
+    
+    def get_doctor_profile(self, obj):
+        serializer = MinimumDoctorInfoSerializer(obj.doctor, context=self.context)
+        return serializer.data
+    
+    def get_patient_profile(self, obj):
+        serializer = MinumumPatientInfoSerializer(obj.patient, context=self.context)
+        return serializer.data
+    
+    def get_doctor_availability_details(self, obj):
+        serializer = DoctorAvailabilitySerializer(obj.doctor_availability, context=self.context)
+        return serializer.data
+    
+    def get_appointement_happen_in(self, obj):
+        if obj.is_confirmed:
+            return obj.happend_in()
+        return "Appointment not confirmed by doctor yet"
     
 class PatientAppointmentInfoSerializer(serializers.ModelSerializer):
     doctor_profile = serializers.SerializerMethodField()

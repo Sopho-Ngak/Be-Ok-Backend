@@ -56,11 +56,18 @@ class PatientViewSet(viewsets.ModelViewSet):
                 return PatientPaymentStatusSerializer
             elif self.request.method == 'POST':
                 return PatientCashInSerializer
+
+        elif self.action == 'patient_appointment':
+            return AppointmentSerializer
         
         return super().get_serializer_class()
     
     def get_permissions(self):
         if self.action == 'ai_consultation':
+            self.permission_classes = [IsAuthenticated, IsPatient]
+        elif self.action == 'get_patient_record':
+            self.permission_classes = [IsAuthenticated, IsDoctorOrPatient]
+        elif self.action == 'patient_appointment':
             self.permission_classes = [IsAuthenticated, IsPatient]
         return super().get_permissions()
         
@@ -110,7 +117,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='get-patient-record')
     def get_patient_record(self, request):
-        id = request.GET.get('id')
+        id = request.query_params.get('id')
         try:
             report = PatientReport.objects.get(id=id)
             serializer = PatientReportSerializer(report, context={'request': request})
@@ -120,7 +127,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         
     @action(detail=False, methods=['patch'], url_path='update-report')
     def partial_update_report(self, request):
-        id = request.GET.get('id')
+        id = request.query_params.get('id')
         try:
             report = PatientReport.objects.get(id=id)
             serializer = PatientReportSerializer(
@@ -133,7 +140,7 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['patch'], url_path='update-dependent-report')
     def partial_update_dependent_report(self, request):
-        id = request.GET.get('id')
+        id = request.query_params.get('id')
         try:
             report = PatientDependentReport.objects.get(id=id)
             serializer = PatientDependentReportSerializer(
@@ -144,27 +151,44 @@ class PatientViewSet(viewsets.ModelViewSet):
         except PatientDependentReport.DoesNotExist:
             return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_200_OK)    
 
-    @action(detail=False, methods=['post'], url_path='appointment')
-    def book_appointment(self, request):
-        try:
-            if request.method == 'POST':
-                appointment = Appointement()
-                appointment.patient = Patient.objects.get(patient_username=request.user)
-                appointment.doctor = Doctor.objects.get(id=request.data.get('doctor_id'))
-                appointment.service = request.data.get('service')
-                appointment.doctor_availability = DoctorAvailability.objects.get(id=request.data.get('doctor_availability'))
-                appointment.consultation_type = request.data.get('consultation_type')
-                appointment.is_confirmed = False
-                appointment.consultation_note = request.data.get('consultation_note')
-                appointment.save()
-                serializer = AppointmentSerializer(appointment, context={'request': request})
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='appointment')
+    def patient_appointment(self, request):
+
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        elif request.method == 'GET':
+            if request.query_params.get('id'):
+                try:
+                    appointment = Appointement.objects.get(id=request.query_params.get('id'))
+                    serializer = self.get_serializer(appointment, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except Appointement.DoesNotExist:
+                    return Response({"message": "No appointment found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            patient = Patient.objects.get(patient_username=request.user)
+            appointments = Appointement.objects.filter(patient=patient)
+            serializer = self.get_serializer(appointments, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('id'):
+                return Response({"message": "Please provide an id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                appointment = Appointement.objects.get(id=request.query_params.get('id'))
+                serializer = self.get_serializer(appointment, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Appointement.DoesNotExist:
+                return Response({"message": "No appointment found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=False, methods=['post'], url_path='consult-doctor')
     def ai_consultation(self, request):
-        choice = request.GET.get('choice')
+        choice = request.query_params.get('choice')
  
         dianostic_text = settings.PATIENT_CONSTANTS.messages.DIANOSTIC_TEXT
         prescription_text = settings.PATIENT_CONSTANTS.messages.PRESCRIPTION_TEXT
