@@ -121,6 +121,7 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
 class MinimumDoctorInfoSerializer(DoctorInfoSerializer):
 
     class Meta:
+        model = Doctor
         fields = [
             'id', 
             'city', 
