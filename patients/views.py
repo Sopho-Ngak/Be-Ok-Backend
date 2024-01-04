@@ -276,17 +276,20 @@ class PatientViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['put', 'post'], url_path='payment')
     def patient_payment(self, request):
-        payment_instance= Payment()
+
         if request.method == 'PUT':
             print(request.data)
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            payment_instance.phone_number = serializer.data['phone_number']
-            payment_instance.reference_key = serializer.data['reference_key']
-            payment_instance.kind = serializer.data['kind']
+            payment_instance = Payment(
+                phone_number=serializer.data['phone_number'],
+                reference_key=serializer.data['reference_key'],
+                kind=serializer.data['kind']
+            )
             transaction = payment_instance.check_status()
-            if len(transaction["transactions"])>0:
+
+            if len(transaction["transactions"]) > 0:
                 transaction_status = transaction['transactions'][0]['data']['status']
                 if transaction_status == 'successful':
                     return Response({'message': 'Payment successful'}, status=status.HTTP_200_OK)
@@ -294,26 +297,22 @@ class PatientViewSet(viewsets.ModelViewSet):
                     return Response({'message': settings.PATIENT_CONSTANTS.messages.PAYMENT_FAILED}, status=status.HTTP_424_FAILED_DEPENDENCY)
                 elif transaction_status == 'pending':
                     return Response({'message': 'Payment pending'}, status=status.HTTP_102_PROCESSING)
-            else:
-                return Response({'message': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            return Response({'message': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
 
         if request.method == 'POST':
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            payment_instance.phone_number = serializer.data['phone_number']
-            payment_instance.amount = serializer.data['amount']
+
+            payment_instance = Payment(
+                phone_number=serializer.data['phone_number'],
+                amount=serializer.data['amount']
+            )
 
             payment = payment_instance.pay()
 
             return Response(payment, status=status.HTTP_200_OK)
             
-
-            
-
-
-
-
-    
 
 
     # @action(detail=False, methods=['post'], url_path='correct-symptoms')

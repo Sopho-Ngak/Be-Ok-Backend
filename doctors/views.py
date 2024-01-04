@@ -42,7 +42,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
             case 'doctor_documents':
                 return DoctorDocumentSerializer
             
-            case 'doctor_availabilities' | 'available_doctors':
+            case 'doctor_availabilities' | 'available_doctors' | 'doctor_availabilities_by_date':
                 return DoctorAvailabilitySerializer
             case 'doctor_appointments':
                 return DoctorAppointmentInfoSerializer
@@ -92,11 +92,13 @@ class DoctorViewSet(viewsets.ModelViewSet):
                     serializer = self.get_serializer(doctor, context={'request': request})
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 except Doctor.DoesNotExist:
-                    return Response({'message': 'No doctor found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
-                
-            doctor = Doctor.objects.get(user=request.user)
-            serializer = self.get_serializer(doctor, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_200_OK)
+                    return Response({'message': 'No doctor found with the id provided'}, status=status.HTTP_404_NOT_FOUND)
+            try:
+                doctor = Doctor.objects.get(user=request.user)
+                serializer = self.get_serializer(doctor, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Doctor.DoesNotExist:
+                return Response({'message': 'The current user is not a doctor'}, status=status.HTTP_404_NOT_FOUND)
         
         # Update doctor profile
         elif request.method == 'PATCH':
@@ -262,11 +264,13 @@ class DoctorViewSet(viewsets.ModelViewSet):
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 except Doctor.DoesNotExist:
                     return Response({'message': 'No doctor found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
-        
-            doctor = Doctor.objects.get(user=request.user)
-            availabilities = DoctorAvailability.objects.filter(doctor=doctor, is_booked=False, ending_date__gte=timezone.now())
-            serializer = self.get_serializer(availabilities)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            try:
+                doctor = Doctor.objects.get(user=request.user)
+                availabilities = DoctorAvailability.objects.filter(doctor=doctor, is_booked=False, ending_date__gte=timezone.now())
+                serializer = self.get_serializer(availabilities, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Doctor.DoesNotExist:
+                return Response({'message': 'The current user is not a doctor'}, status=status.HTTP_400_BAD_REQUEST)
         
         elif request.method == 'POST':
             doctor = Doctor.objects.get(user=request.user)
@@ -287,7 +291,21 @@ class DoctorViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except DoctorAvailability.DoesNotExist:
                 return Response({'message': 'No availability found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
+    @action(detail=False, methods=['get'], url_path='availabilities-by-date')
+    def doctor_availabilities_by_date(self, request):
+        '''
+        Get all available doctors by date
+        date format: YYYY-MM-DD
+        '''
+        date = request.query_params.get('date')
+        if not date:
+            return Response({'message': 'Please provide date'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        availabilities = DoctorAvailability.objects.filter(is_booked=False, ending_date__gte=timezone.now(), starting_date__date=date)
+        serializer = self.get_serializer(availabilities, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+           
     @action(detail=False, methods=['get'], url_path='available-doctors')
     def available_doctors(self, request):
         '''
