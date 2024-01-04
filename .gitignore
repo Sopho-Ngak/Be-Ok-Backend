@@ -9,10 +9,12 @@
 .env
 db.sqlite3
 ai_error.log
+
 # migrations but not the __init__.py
 **/migrations/*
 !/**/migrations/__init__.py
 */migrations/*
+
 # media file but not the content
 media/*
 !/media/default/
@@ -23,3 +25,7 @@ media/*
 
 #Virtual Environment
 beokay/
+
+# IDE
+.idea/
+.vscode/

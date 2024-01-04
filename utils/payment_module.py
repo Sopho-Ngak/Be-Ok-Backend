@@ -8,13 +8,13 @@ CASHIN_URL = url = "https://payments.paypack.rw/api/transactions/cashin?Idempote
 TRANSACTION_STATUS_URL = "https://payments.paypack.rw/api/events/transactions?ref={reference_key}&kind={kind}&client={client}"
 
 class Payment:
-    def __init__(self, amount=None, phone_number=None, reference_key=None, kind=None):
+    def __init__(self, amount:int = None, phone_number:str=None, reference_key=None, kind=None):
         self.amount = amount
         self.phone_number = phone_number
         self.reference_key = reference_key
         self.kind = kind
 
-    def _authenticate(self):
+    def _authenticate(self) -> str:
         """Authenticate to get a token"""
         payload = json.dumps({
         "client_id": settings.PAYPACK_APP_ID,
@@ -30,11 +30,11 @@ class Payment:
 
         return response.json()["access"]
 
-    def generate_idempotency_key(self):
+    def generate_idempotency_key(self) -> str:
         return str(uuid.uuid4()).replace('-', '')[:32]
 
 
-    def _cashin(self):
+    def _cashin(self) -> dict:
         payload = json.dumps({
             "amount": self.amount,
             "number": self.phone_number
@@ -50,10 +50,10 @@ class Payment:
 
         return response.json()
     
-    def pay(self):
+    def pay(self) -> dict:
         return self._cashin()
 
-    def check_status(self):
+    def check_status(self) -> dict:
         """Check the status of a transaction"""
         headers = {
             'Accept': 'application/json',
