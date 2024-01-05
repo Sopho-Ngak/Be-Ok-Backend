@@ -18,6 +18,7 @@ from doctors.serializers import (
     DoctorSerializer)
 from patients.models import Appointement, PatientReport, PatientDependentReport, Patient
 from patients.serializers import DoctorAppointmentInfoSerializer, PatientReportSerializer, PatientDependentReportSerializer
+from accounts.models import User
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated,])
@@ -75,6 +76,8 @@ class DoctorViewSet(viewsets.ModelViewSet):
         elif self.action == 'doctor_consultation':
             self.permission_classes = [IsAuthenticated, IsDoctor]
         elif self.action == 'get_all_doctors':
+            self.permission_classes = [IsAuthenticated, ]
+        elif self.action == 'doctor_availabilities_by_date':
             self.permission_classes = [IsAuthenticated, ]
         return super().get_permissions()
     
@@ -295,14 +298,27 @@ class DoctorViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='availabilities-by-date')
     def doctor_availabilities_by_date(self, request):
         '''
-        Get all available doctors by date
+        Get all doctor's availabilities by date
         date format: YYYY-MM-DD
+        doctor_id: required for patient to get doctor's availabilities
         '''
         date = request.query_params.get('date')
-        if not date:
-            return Response({'message': 'Please provide date'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.user_type == User.DOCTOR:
+            if not date:
+                return Response({'message': 'date is required'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                doctor = Doctor.objects.get(user=request.user)
+                availabilities = DoctorAvailability.objects.filter(doctor=doctor, is_booked=False, ending_date__gte=timezone.now(), starting_date__date=date)
+                serializer = self.get_serializer(availabilities, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Doctor.DoesNotExist:
+                return Response({'message': 'The current user doesn\'t have a doctor instance'}, status=status.HTTP_400_BAD_REQUEST)
         
-        availabilities = DoctorAvailability.objects.filter(is_booked=False, ending_date__gte=timezone.now(), starting_date__date=date)
+        doctor_id = request.query_params.get('doctor_id')
+        if not date or not doctor_id:
+            return Response({'message': 'date and doctor_id are required for the patient to get doctor\'s availabilitie'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        availabilities = DoctorAvailability.objects.filter(doctor=doctor_id, is_booked=False, ending_date__gte=timezone.now(), starting_date__date=date)
         serializer = self.get_serializer(availabilities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
            
