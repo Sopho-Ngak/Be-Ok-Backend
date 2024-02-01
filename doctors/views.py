@@ -11,21 +11,21 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Doctor, DoctorDocument, DoctorAvailability, DiseaseGroup, Disease
+from .models import Doctor, DoctorDocument, DoctorAvailability
 from doctors.permissions import IsDoctor, IsDoctorAndProfileOwner
 from doctors.serializers import (
-    DiseaseGroupSerializer, DiseaseSerializer, DoctorDocumentSerializer, DoctorAvailabilitySerializer, DoctorInfoSerializer,
+    DoctorDocumentSerializer, DoctorAvailabilitySerializer, DoctorInfoSerializer,
     DoctorSerializer)
 from patients.models import Appointement, PatientReport, PatientDependentReport, Patient
 from patients.serializers import DoctorAppointmentInfoSerializer, PatientReportSerializer, PatientDependentReportSerializer
 from accounts.models import User
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated,])
-def get_disease_groups(request):
-    disease_groups = DiseaseGroup.objects.all()
-    serializer = DiseaseGroupSerializer(disease_groups, many=True, context={'request': request})
-    return Response(serializer.data, status=status.HTTP_200_OK)
+# @api_view(['GET'])
+# @permission_classes([IsAuthenticated,])
+# def get_disease_groups(request):
+#     disease_groups = DiseaseGroup.objects.all()
+#     serializer = DiseaseGroupSerializer(disease_groups, many=True, context={'request': request})
+#     return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DoctorViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsDoctor]
