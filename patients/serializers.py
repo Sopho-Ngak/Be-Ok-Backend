@@ -154,10 +154,8 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
         return serializer.data
 
 class PatientSerializer(serializers.ModelSerializer):
-    patient_previous_reports = PatientReportSerializer(
-        source="patient_reports", many=True, read_only=True)
-    patient_dependents_repports = PatientDependentReportSerializer(
-        source="patient_dependents", many=True, read_only=True)
+    patient_previous_reports = serializers.SerializerMethodField()
+    patient_dependents_repports = serializers.SerializerMethodField()
     # patient_personal_information = serializers.SerializerMethodField()
     patient_profile = serializers.SerializerMethodField()
     class Meta:
@@ -177,6 +175,18 @@ class PatientSerializer(serializers.ModelSerializer):
     def get_patient_profile(self, obj):
         serializer = PatientInfoSerializer(obj.patient_username, context=self.context)
         return serializer.data
+    
+    def get_patient_previous_reports(self, obj):
+        paid_reports_instance = PatientReport.objects.filter(patient_username=obj, is_paid=True)
+        serializer = PatientReportSerializer(paid_reports_instance, many=True, context=self.context)
+        return serializer.data
+    
+    def get_patient_dependents_repports(self, obj):
+        paid_reports_instance = PatientDependentReport.objects.filter(patient_username=obj, is_paid=True)
+        serializer = PatientDependentReportSerializer(paid_reports_instance, many=True, context=self.context)
+        return serializer.data
+
+
 
 class PatientEditProfileSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True)

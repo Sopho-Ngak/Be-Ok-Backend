@@ -119,7 +119,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     def get_patient_record(self, request):
         id = request.query_params.get('id')
         try:
-            report = PatientReport.objects.get(id=id)
+            report = PatientReport.objects.get(id=id, is_paid=True)
             serializer = PatientReportSerializer(report, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except PatientReport.DoesNotExist:
@@ -129,7 +129,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     def partial_update_report(self, request):
         id = request.query_params.get('id')
         try:
-            report = PatientReport.objects.get(id=id)
+            report = PatientReport.objects.get(id=id, is_paid=True)
             serializer = PatientReportSerializer(
                 report, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
@@ -142,7 +142,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     def partial_update_dependent_report(self, request):
         id = request.query_params.get('id')
         try:
-            report = PatientDependentReport.objects.get(id=id)
+            report = PatientDependentReport.objects.get(id=id, is_paid=True)
             serializer = PatientDependentReportSerializer(
                 report, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
@@ -232,7 +232,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             serializer.save(
                 consulted_by_doctor=consultated_by,
                 patient_username=Patient.objects.get(patient_username=request.user))
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({'id':serializer.data['id']}, status=status.HTTP_201_CREATED)
             
         elif choice:
             if request.data.get("dependent_blood_group") and request.data.get("dependent_alergies"):
@@ -244,16 +244,16 @@ class PatientViewSet(viewsets.ModelViewSet):
             if request.data.get("dependent_age"):
                 prescription_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
 
-            dependent_result = get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))
-            dependent_prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))
-            dependent_recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))
-            dependent_recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))
+            # dependent_result = get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))
+            # dependent_prescription_result = get_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))
+            # dependent_recommendation_result = get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))
+            # dependent_recommended_tests_result = get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))
             
             
-            # dependent_result = "get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))"
-            # dependent_prescription_result = "et_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))"
-            # dependent_recommendation_result = "get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))"
-            # dependent_recommended_tests_result = "get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))"
+            dependent_result = "get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))"
+            dependent_prescription_result = "et_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))"
+            dependent_recommendation_result = "get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))"
+            dependent_recommended_tests_result = "get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))"
             
             if dependent_result:
                 request.data['dependent_results'] = dependent_result
@@ -267,12 +267,37 @@ class PatientViewSet(viewsets.ModelViewSet):
             serializer.save(
                 consulted_by_doctor=consultated_by,
                 patient_username=Patient.objects.get(patient_username=request.user))
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({'id':serializer.data['id']}, status=status.HTTP_201_CREATED)
             
         else:
             return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        
+    
+    @action(detail=False, methods=['get'], url_path='get-paid-result')
+    def get_paid_result(self, request):
+        id = request.query_params.get('id')
+        choice = request.query_params.get('choice')
+        print(id, choice)
+        if request.method == 'GET':
+            if not id or not choice:
+                return Response({'message': 'Please provide an id and choice'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                if choice == 'myself':
+                    report = PatientReport.objects.get(id=id)
+                    report.is_paid = True
+                    report.save()
+                    serializer = PatientReportSerializer(report, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                
+                dependent_report = PatientDependentReport.objects.get(id=id)
+                dependent_report.is_paid = True
+                dependent_report.save()
+                serializer = PatientDependentReportSerializer(dependent_report, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except PatientReport.DoesNotExist:
+                return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            except PatientDependentReport.DoesNotExist:
+                return Response({"message": "No patient dependent report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
     
     @action(detail=False, methods=['put', 'post'], url_path='payment')
     def patient_payment(self, request):
