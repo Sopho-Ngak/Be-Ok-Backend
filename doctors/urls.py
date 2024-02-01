@@ -2,7 +2,7 @@ from django.urls import path, include
 
 from rest_framework import routers
 
-from doctors.views import get_disease_groups, DoctorViewSet
+from doctors.views import DoctorViewSet
 
 router = routers.DefaultRouter()
 
@@ -27,6 +27,6 @@ router = routers.DefaultRouter()
 router.register('doctor', DoctorViewSet, basename='user')
 
 urlpatterns = [
-    path('get-disease', get_disease_groups, name='disease-groups'),
+    # path('get-disease', get_disease_groups, name='disease-groups'),
     path('', include(router.urls)),
 ]
