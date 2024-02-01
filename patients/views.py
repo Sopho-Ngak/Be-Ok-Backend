@@ -278,7 +278,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     def patient_payment(self, request):
 
         if request.method == 'PUT':
-            print(request.data)
+            # print(request.data)
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
@@ -288,17 +288,23 @@ class PatientViewSet(viewsets.ModelViewSet):
                 kind=serializer.data['kind']
             )
             transaction = payment_instance.check_status()
-            print(len(transaction['transactions']))
+            # print(len(transaction['transactions']))
 
             if len(transaction["transactions"]) > 0:
                 transaction_status = transaction['transactions'][0]['data']['status']
-                print(transaction_status)
+                # print(transaction_status)
                 if transaction_status == 'successful':
-                    return Response({'message': 'Payment successful'}, status=status.HTTP_200_OK)
+                    return Response({
+                        'message': 'Payment Successful',
+                        'payment_status': transaction_status}, status=status.HTTP_200_OK)
                 elif transaction_status == 'failed':
-                    return Response({'message': settings.PATIENT_CONSTANTS.messages.PAYMENT_FAILED}, status=status.HTTP_424_FAILED_DEPENDENCY)
+                    return Response({
+                        'message': settings.PATIENT_CONSTANTS.messages.PAYMENT_FAILED,
+                        'payment_status': transaction_status}, status=status.HTTP_424_FAILED_DEPENDENCY)
                 elif transaction_status == 'pending':
-                    return Response({'message': 'Payment pending'}, status=status.HTTP_200_OK)
+                    return Response({
+                        'message': 'Payment Pending',
+                        'payment_status': transaction_status}, status=status.HTTP_200_OK)
                 else:
                     return Response({'message': transaction}, status=status.HTTP_404_NOT_FOUND)
             
