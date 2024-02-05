@@ -23,6 +23,7 @@ from doctors.serializers import (
     DoctorInfoSerializer)
 from utils.ai_call import get_patient_result_from_ai
 from utils.payment_module import Payment
+from rest_framework.decorators import action
 #from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
 
 
@@ -69,6 +70,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated, IsDoctorOrPatient]
         elif self.action == 'patient_appointment':
             self.permission_classes = [IsAuthenticated, IsPatient]
+        # elif self.action == 'get_paid_result':
+        #     self.permission_classes = [IsAuthenticated, IsPatient]
         return super().get_permissions()
         
 
@@ -186,7 +189,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             except Appointement.DoesNotExist:
                 return Response({"message": "No appointment found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
     
-    @action(detail=False, methods=['post'], url_path='consult-doctor')
+    @action(detail=False, methods=['post'], url_path='ai-consultation')
     def ai_consultation(self, request):
         choice = request.query_params.get('choice')
  
@@ -272,11 +275,11 @@ class PatientViewSet(viewsets.ModelViewSet):
         else:
             return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['get'], url_path='get-paid-result')
+    @action(detail=False, methods=['get'], url_path='paid-result/')
     def get_paid_result(self, request):
         id = request.query_params.get('id')
         choice = request.query_params.get('choice')
-        print(id, choice)
+        print("#############",id, choice)
         if request.method == 'GET':
             if not id or not choice:
                 return Response({'message': 'Please provide an id and choice'}, status=status.HTTP_400_BAD_REQUEST)
@@ -297,6 +300,31 @@ class PatientViewSet(viewsets.ModelViewSet):
                 return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
             except PatientDependentReport.DoesNotExist:
                 return Response({"message": "No patient dependent report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+    # def get_paid_result(self, request):
+    #     id = request.query_params.get('id')
+    #     choice = request.query_params.get('choice')
+    #     print("#############",id, choice)
+    #     if request.method == 'GET':
+    #         if not id or not choice:
+    #             return Response({'message': 'Please provide an id and choice'}, status=status.HTTP_400_BAD_REQUEST)
+    #         try:
+    #             if choice == 'myself':
+    #                 report = PatientReport.objects.get(id=id)
+    #                 report.is_paid = True
+    #                 report.save()
+    #                 serializer = PatientReportSerializer(report, context={'request': request})
+    #                 return Response(serializer.data, status=status.HTTP_200_OK)
+                
+    #             dependent_report = PatientDependentReport.objects.get(id=id)
+    #             dependent_report.is_paid = True
+    #             dependent_report.save()
+    #             serializer = PatientDependentReportSerializer(dependent_report, context={'request': request})
+    #             return Response(serializer.data, status=status.HTTP_200_OK)
+    #         except PatientReport.DoesNotExist:
+    #             return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+    #         except PatientDependentReport.DoesNotExist:
+    #             return Response({"message": "No patient dependent report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
             
     
     @action(detail=False, methods=['put', 'post'], url_path='payment')
