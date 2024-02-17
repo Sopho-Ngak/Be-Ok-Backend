@@ -100,6 +100,8 @@ class PatientReportSerializer(serializers.ModelSerializer):
             'prescription',
             'recommended_tests',
             'recommendation',
+            'medical_form',
+            'is_paid',
             'created_at',
         ]
 
@@ -144,6 +146,8 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
             'dependent_prescription',
             'dependent_recommended_tests',
             'dependent_recommendation',
+            'medical_form',
+            'is_paid',
             'created_at',
         ]
     
