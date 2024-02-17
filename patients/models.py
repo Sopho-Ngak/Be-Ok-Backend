@@ -100,6 +100,7 @@ class PatientReport(models.Model):
     prescription = models.TextField(blank=True, null=True)
     recommended_tests = models.TextField(blank=True, null=True)
     recommendation = models.TextField(blank=True, null=True)
+    medical_form = models.FileField(upload_to='medical_forms/', blank=True, null=True)
     is_paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -142,6 +143,7 @@ class PatientDependentReport(models.Model):
     email = models.EmailField(verbose_name='email address', max_length=255, unique=True, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default=User.OTHER)
+    medical_form = models.FileField(upload_to='medical_forms/', blank=True, null=True)
     is_paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
