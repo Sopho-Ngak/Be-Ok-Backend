@@ -1,5 +1,6 @@
 
 # Third party imports
+import re
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -12,7 +13,7 @@ from django.contrib.auth import update_session_auth_hash
 # Local imports
 from accounts.serializers import (
     CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer, ResetPasswordSerializer, 
-    SetNewPasswordSerializer, ProfilePictureSerializer)
+    SetNewPasswordSerializer, ProfilePictureSerializer, ChangePasswordSerializer)
 from accounts.models import (User, VerificationCode, ProfilePicture)
 from utils.generate_code import get_random_code
 from accounts.tasks import send_activation_code_via_email
@@ -45,6 +46,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return SetNewPasswordSerializer
         elif self.action == 'profile_picture':
             return ProfilePictureSerializer
+        elif self.action == 'change_password':
+            return ChangePasswordSerializer
         return super().get_serializer_class()
 
     def get_permissions(self):
@@ -55,6 +58,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'resend_verification_code'
             ]:
             self.permission_classes = (AllowAny,)
+        # elif self.action == 'reset_password'
         # if self.action == 'create':
         #     self.permission_classes = (AllowAny,)
         # if self.action == 'edit_profile':
@@ -106,8 +110,23 @@ class UserViewSet(viewsets.ModelViewSet):
 
         except VerificationCode.DoesNotExist:
             return Response({'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    @action(detail=False, methods=['post'], url_path='set-new-password')
+    def change_password(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user = User.objects.get(username=request.user.username)
+            old_password = serializer.validated_data.get('old_password')
+            if not user.check_password(old_password):
+                return Response({'message': 'Invalid old password'}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(serializer.validated_data.get('new_password'))
+            user.save() 
+            return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'message': 'Invalid user'}, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['post', 'patch'], url_path='reset-password')
+    @action(detail=False, methods=['post', 'patch', 'put'], url_path='reset-password')
     def reset_password(self, request):
         if request.method == 'POST':
             serializer = self.get_serializer(data=request.data)
@@ -115,26 +134,36 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
         
+        elif request.method == 'PUT':
+            try:
+                code = VerificationCode.objects.get(code=request.data.get('code'))
+                return Response({'message': 'verified'}, status=status.HTTP_200_OK)
+            except VerificationCode.DoesNotExist:
+                return Response({'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+        
         elif request.method == 'PATCH':
-                
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            verification_code = VerificationCode.objects.get(
-                code=request.data['code'])
 
-            if verification_code.is_used:
-                return Response({'message': 'OTP already used'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                verification_code = VerificationCode.objects.get(
+                    code=request.data['code'])
 
-            if verification_code.is_expired:
+                if verification_code.is_used:
+                    return Response({'message': 'OTP already used'}, status=status.HTTP_400_BAD_REQUEST)
+
+                if verification_code.is_expired:
+                    verification_code.delete()
+                    return Response({'message': 'Verification code expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+                user = verification_code.user
+                user.set_password(request.data['password'])
+                user.save()
                 verification_code.delete()
-                return Response({'message': 'Verification code expired'}, status=status.HTTP_400_BAD_REQUEST)
-
-            user = verification_code.user
-            user.set_password(request.data['password'])
-            user.save()
-            verification_code.delete()
-            update_session_auth_hash(request, user)
-            return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+                update_session_auth_hash(request, user)
+                return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+            except VerificationCode.DoesNotExist:
+                return Response({'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
 
     @action(detail=False, methods=['post'], url_path='resend-verfication-code')

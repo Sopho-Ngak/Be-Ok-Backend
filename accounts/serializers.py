@@ -127,14 +127,24 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
         send_activation_code_via_email(id=verification_code.id, reset_pass=True)
         return verification_code
 
+    
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(min_length=8, write_only=True)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate(self, attrs):
+        if attrs.get('new_password') != attrs.get('confirm_password'):
+            raise serializers.ValidationError("Passwords do not match")
+        return attrs
 
 class SetNewPasswordSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=8, write_only=True)
     code = serializers.CharField(min_length=4, write_only=True)
 
-    def validate(self, attrs):
-        if not VerificationCode.objects.filter(code=attrs.get('code')).exists():
-            raise serializers.ValidationError("Code is not valid")
-        return attrs
+    # def validate(self, attrs):
+    #     if not VerificationCode.objects.filter(code=attrs.get('code')).exists():
+    #         raise serializers.ValidationError("Code is not valid")
+    #     return attrs
     
 
