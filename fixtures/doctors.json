@@ -1,0 +1,87 @@
+[
+{
+  "model": "doctors.doctor",
+  "pk": "25763a95-4018-4171-9f45-94b2708a1954",
+  "fields": {
+    "user": "5743c7c7-f2ec-448c-b649-92b06daa10a5",
+    "city": null,
+    "state": null,
+    "specialties": null,
+    "physical_consultation": false,
+    "online_consultation": false,
+    "description": null,
+    "created_at": "2024-02-01T15:52:00.297Z"
+  }
+},
+{
+  "model": "doctors.doctor",
+  "pk": "3138cba7-0e64-4f85-a26d-3df7e3ebf7b7",
+  "fields": {
+    "user": "583a6bd8-37f3-4998-abfb-6e730ab56ed0",
+    "city": null,
+    "state": null,
+    "specialties": null,
+    "physical_consultation": false,
+    "online_consultation": false,
+    "description": null,
+    "created_at": "2024-01-30T08:58:36.097Z"
+  }
+},
+{
+  "model": "doctors.doctordocument",
+  "pk": "c71d9cb3-9e49-42a0-a41f-09bb785cf1d6",
+  "fields": {
+    "doctor": "25763a95-4018-4171-9f45-94b2708a1954",
+    "licence_number": null,
+    "document": "",
+    "is_approved": false,
+    "approved_by": null,
+    "approved_at": null,
+    "created_at": "2024-02-01T15:52:00.298Z"
+  }
+},
+{
+  "model": "doctors.doctoravailability",
+  "pk": "170f5b3c-2a0a-42d8-aab1-747adc5168a1",
+  "fields": {
+    "doctor": "3138cba7-0e64-4f85-a26d-3df7e3ebf7b7",
+    "starting_date": "2024-03-21T22:42:00Z",
+    "ending_date": "2024-03-21T23:42:00Z",
+    "is_booked": true,
+    "created_at": "2024-02-22T19:43:01.454Z"
+  }
+},
+{
+  "model": "doctors.doctoravailability",
+  "pk": "3c0e5095-e1c8-47dc-8575-cb5c1307c3be",
+  "fields": {
+    "doctor": "3138cba7-0e64-4f85-a26d-3df7e3ebf7b7",
+    "starting_date": "2024-02-02T14:02:00Z",
+    "ending_date": "2024-02-02T17:02:00Z",
+    "is_booked": true,
+    "created_at": "2024-01-30T09:03:33.169Z"
+  }
+},
+{
+  "model": "doctors.doctoravailability",
+  "pk": "aea2b4c7-afa5-4478-91fe-7a95bdad7032",
+  "fields": {
+    "doctor": "3138cba7-0e64-4f85-a26d-3df7e3ebf7b7",
+    "starting_date": "2024-01-31T13:01:00Z",
+    "ending_date": "2024-01-31T16:01:00Z",
+    "is_booked": true,
+    "created_at": "2024-01-30T09:01:48.348Z"
+  }
+},
+{
+  "model": "doctors.doctoravailability",
+  "pk": "e437e28f-816e-475e-8b97-8d7203ff3d90",
+  "fields": {
+    "doctor": "3138cba7-0e64-4f85-a26d-3df7e3ebf7b7",
+    "starting_date": "2024-02-22T18:12:00Z",
+    "ending_date": "2024-02-22T19:12:00Z",
+    "is_booked": true,
+    "created_at": "2024-02-05T15:12:28.709Z"
+  }
+}
+]

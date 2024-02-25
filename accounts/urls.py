@@ -11,7 +11,7 @@ router = routers.DefaultRouter()
 
 
 router.register('users', UserViewSet, basename='user')
-router.register('login', UserLogin, basename='user-login')
+router.register('', UserLogin, basename='user-login')
 
 urlpatterns = [
     path('', include(router.urls)),

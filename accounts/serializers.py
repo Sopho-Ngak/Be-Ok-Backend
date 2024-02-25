@@ -1,4 +1,4 @@
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework import serializers
 from django.utils import timezone
 
@@ -34,6 +34,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['user_type'] = user.user_type
         return token
 
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):
+    pass
 
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,6 +1,5 @@
 
 # Third party imports
-import re
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,11 +7,11 @@ from rest_framework.decorators import action
 
 # Django imports
 from django.conf import settings
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import update_session_auth_hash, logout
 
 # Local imports
 from accounts.serializers import (
-    CustomTokenObtainPairSerializer, UserCreateSerializer, UserInfoSerializer, ResetPasswordSerializer, 
+    CustomTokenObtainPairSerializer,CustomTokenRefreshSerializer, UserCreateSerializer, UserInfoSerializer, ResetPasswordSerializer, 
     SetNewPasswordSerializer, ProfilePictureSerializer, ChangePasswordSerializer)
 from accounts.models import (User, VerificationCode, ProfilePicture)
 from utils.generate_code import get_random_code
@@ -23,10 +22,44 @@ class UserLogin(viewsets.ModelViewSet):
     permission_classes = (AllowAny,)
     serializer_class = CustomTokenObtainPairSerializer
 
-    def create(self, request):
-        serializer = CustomTokenObtainPairSerializer(data=request.data)
+    def get_serializer_class(self):
+        if self.action == 'user_login':
+            return CustomTokenObtainPairSerializer
+        if self.action == 'refresh_token':
+            return CustomTokenRefreshSerializer
+        return super().get_serializer_class()
+    
+    def get_permissions(self):
+        if self.action == 'user_logout':
+            self.permission_classes = (IsAuthenticated,)
+        return super().get_permissions()
+    
+    @action(detail=False, methods=['post'], url_path='login')
+    def user_login(self, request):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'], url_path='refresh-token')
+    def refresh_token(self, request):
+        # try:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        # except Exception as e:
+        #     return Response({'message': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'], url_path='logout')
+    def user_logout(self, request):
+        copy_user = request.user.username
+        logout(request)
+        return Response({'message': 'Logged out successfully', 'user': copy_user}, status=status.HTTP_200_OK)
+
+    # def create(self, request):
+    #     serializer = CustomTokenObtainPairSerializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        
 
 
 class UserViewSet(viewsets.ModelViewSet):
