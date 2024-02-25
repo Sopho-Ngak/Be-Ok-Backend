@@ -161,8 +161,9 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
     'ACCESS_TOKEN_LIFETIME': timedelta(days=3650), # Set to 10 years
-    # 'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    # 'ROTATE_REFRESH_TOKENS': True,
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_TOKEN_CLASSES': (
         'rest_framework_simplejwt.tokens.AccessToken',
     )
@@ -229,7 +230,9 @@ MEDIA_URL = '/media/'
 # MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-
+FIXTURE_DIRS = (
+    os.path.join(BASE_DIR, 'fixtures'),
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field

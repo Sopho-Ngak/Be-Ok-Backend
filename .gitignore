@@ -15,7 +15,7 @@ ai_error.log
 !/**/migrations/__init__.py
 */migrations/*
 
-# media file but not the content
+# media file but not the content of default
 media/*
 !/media/default/
 !/media/default/**
