@@ -36,14 +36,14 @@ class UserLogin(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], url_path='login')
     def user_login(self, request):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['post'], url_path='refresh-token')
     def refresh_token(self, request):
         # try:
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
         # except Exception as e:
@@ -101,7 +101,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def create(self, request):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             serializer.instance.set_password(serializer.validated_data['password'])
@@ -146,7 +146,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
     @action(detail=False, methods=['post'], url_path='set-new-password')
     def change_password(self, request):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         try:
             user = User.objects.get(username=request.user.username)
@@ -162,7 +162,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post', 'patch', 'put'], url_path='reset-password')
     def reset_password(self, request):
         if request.method == 'POST':
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=request.data, context={'request': request})
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
@@ -177,7 +177,7 @@ class UserViewSet(viewsets.ModelViewSet):
         elif request.method == 'PATCH':
 
             try:
-                serializer = self.get_serializer(data=request.data)
+                serializer = self.get_serializer(data=request.data, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 verification_code = VerificationCode.objects.get(
                     code=request.data['code'])
@@ -221,7 +221,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='edit-profile')
     def edit_profile(self, request):
         serializer = self.get_serializer(
-            request.user, data=request.data, partial=True)
+            request.user, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -233,12 +233,12 @@ class UserViewSet(viewsets.ModelViewSet):
         profile_picture_instance, _ = ProfilePicture.objects.get_or_create(user=request.user)
 
         if request.method == 'GET':
-            serializer = self.get_serializer(profile_picture_instance)
+            serializer = self.get_serializer(profile_picture_instance, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         if request.method == 'POST':
             serializer = self.get_serializer(
-                profile_picture_instance, data=request.data, partial=True)
+                profile_picture_instance, data=request.data, partial=True, context={'request': request})
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -246,5 +246,5 @@ class UserViewSet(viewsets.ModelViewSet):
         elif request.method == 'DELETE':
             profile_picture_instance.delete()
             default_image = ProfilePicture.objects.create(user=request.user)
-            serializer = self.get_serializer(default_image)
+            serializer = self.get_serializer(default_image, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
