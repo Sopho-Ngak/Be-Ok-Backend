@@ -55,14 +55,19 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'cloudinary_storage',
+    'cloudinary',
+]
+
+CUSTOM_APPS = [
     'accounts',
     'patients',
     'doctors',
     'chats',
     'settings',
-    'cloudinary_storage',
-    'cloudinary',
 ]
+
+INSTALLED_APPS += CUSTOM_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
