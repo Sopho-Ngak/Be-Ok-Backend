@@ -65,6 +65,7 @@ CUSTOM_APPS = [
     'doctors',
     'chats',
     'settings',
+    'hospital',
 ]
 
 INSTALLED_APPS += CUSTOM_APPS
