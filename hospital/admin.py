@@ -1,13 +1,19 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from hospital.models import Hospital, OpeningHours, Galery
+from hospital.models import Hospital, OpeningHours, Galery, Service
 # Register your models here.
 
 class OpeningHoursInline(admin.TabularInline):
     model = OpeningHours
     extra = 0
     readonly_fields = ('created_at', 'updated_at')
+
+class ServiceInLine(admin.TabularInline):
+    model = Service
+    extra = 0
+    readonly_fields = ('created_at', 'updated_at')
+    search_fields = ('name')
 
 class GaleryInline(admin.TabularInline):
     model = Galery
@@ -29,7 +35,7 @@ class HospitalAdmin(admin.ModelAdmin):
     list_display = ('name', 'address', 'city', 'state', 'country', 'phone', 'email', 'created_at', 'updated_at')
     list_filter = ('city', 'state', 'country', 'created_at', 'updated_at')
     search_fields = ('name', 'address', 'city', 'state', 'country', 'phone', 'email', 'website')
-    inlines = [OpeningHoursInline, GaleryInline,]
+    inlines = [ServiceInLine, OpeningHoursInline, GaleryInline,]
     fieldsets = (
         ('Information about the hospital/clinic', {
             'fields': (

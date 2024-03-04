@@ -47,6 +47,14 @@ class Hospital(models.Model):
     def opening_hours(self):
         return self.hospital_opening_hour.all()
     
+
+class Service(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    hostpital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='hospital_services')
+    name = models.CharField(_("Service Name"), max_length=100)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
 class Galery(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='hospital_galery')
