@@ -29,3 +29,21 @@ class IsDoctorAndProfileOwner(BasePermission):
         if obj.user == Doctor.objects.get(user=request.user):
             return True
         return False
+
+class IsApprovedDoctor(BasePermission):
+    message = "Only approved doctors can perform this action"
+
+    def has_permission(self, request, view):
+        if request.user.user_type == User.DOCTOR:
+            doctor = Doctor.objects.get(user=request.user)
+            if doctor.is_approved:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def has_object_permission(self, request, view, obj):
+        if obj.user == request.user:
+            return True
+        return False

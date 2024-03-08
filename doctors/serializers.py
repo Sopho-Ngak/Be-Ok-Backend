@@ -24,6 +24,10 @@ class DoctorSerializer(serializers.ModelSerializer):
             'created_at', 
             ]
 class DoctorDocumentSerializer(serializers.ModelSerializer):
+    is_approved = serializers.BooleanField(read_only=True)
+    approved_by = serializers.CharField(read_only=True)
+    approved_at = serializers.DateTimeField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
     class Meta:
         model = DoctorDocument
         fields = [

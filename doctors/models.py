@@ -28,6 +28,10 @@ class Doctor(models.Model):
     def __str__(self):
         return str(self.user)
     
+    @property
+    def is_approved(self):
+        return self.doctor_documents.is_approved
+    
 class DoctorDocument(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     doctor = models.OneToOneField(Doctor, on_delete=models.CASCADE, related_name='doctor_documents')
