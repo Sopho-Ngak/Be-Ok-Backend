@@ -10,3 +10,5 @@ migrate:
 
 superuser:
 	python manage.py createsuperuser
+
+all: install migration migrate
