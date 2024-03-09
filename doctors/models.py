@@ -32,6 +32,14 @@ class Doctor(models.Model):
     def is_approved(self):
         return self.doctor_documents.is_approved
     
+    @property
+    def patients_consulted(self):
+        return self.patient_consultated_by.all()
+    
+    @property
+    def dependents_consulted(self):
+        return self.dependent_consultated_by.all()
+    
 class DoctorDocument(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     doctor = models.OneToOneField(Doctor, on_delete=models.CASCADE, related_name='doctor_documents')

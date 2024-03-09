@@ -1,11 +1,12 @@
 from django.utils import timezone
 # import serializers
 from rest_framework import serializers
-from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE, Appointement
-from accounts.models import User
+import patients
+# from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE, Appointement
+# from accounts.models import User
 from accounts.serializers import UserInfoSerializer
 from doctors.models import Doctor, DoctorDocument, DoctorAvailability
-
+import patients.serializers as patient_serializers
 # from doctors.models import DiseaseGroup, Disease
 
 
@@ -89,6 +90,8 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
     personal_information = serializers.SerializerMethodField()
     documents = DoctorDocumentSerializer(source="doctor_documents", read_only=True)
     availabilities = serializers.SerializerMethodField()
+    patients_consulted = serializers.SerializerMethodField()
+    dependents_consulted = serializers.SerializerMethodField()
     # appointments = serializers.SerializerMethodField()
 
     class Meta:
@@ -105,6 +108,8 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
             'personal_information', 
             'documents', 
             'availabilities',
+            'patients_consulted',
+            'dependents_consulted',
             # 'appointments', 
             ]
     def get_personal_information(self, obj):
@@ -116,6 +121,14 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
         availabilities = DoctorAvailability.objects.filter(doctor=obj, is_booked=False, ending_date__gte=timezone.now())
         serializer = DoctorAvailabilitySerializer(availabilities, many=True)
         return serializer.data
+    
+    def get_patients_consulted(self, obj):
+        serializers = patient_serializers.PatientReportSerializer(obj.patients_consulted, many=True, context=self.context)
+        return serializers.data
+    
+    def get_dependents_consulted(self, obj):
+        serializers = patient_serializers.PatientDependentReportSerializer(obj.dependents_consulted, many=True, context=self.context)
+        return serializers.data
     
     # def get_appointments(self, obj):
     #     appointments = Appointement.objects.filter(doctor=obj, doctor_availability__ending_date__gte=timezone.now())
