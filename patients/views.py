@@ -1,7 +1,6 @@
 # Python imports
 
 # Django imports
-from django.shortcuts import render
 from django.conf import settings
 
 # Third party imports
@@ -23,7 +22,6 @@ from doctors.serializers import (
     DoctorInfoSerializer)
 from utils.ai_call import get_patient_result_from_ai
 from utils.payment_module import Payment
-from rest_framework.decorators import action
 #from utils.check_mispelled_word import check_and_autocorrect_mispelled_word
 
 

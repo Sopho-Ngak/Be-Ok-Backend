@@ -22,6 +22,9 @@ class UserLogin(viewsets.ModelViewSet):
     permission_classes = (AllowAny,)
     serializer_class = CustomTokenObtainPairSerializer
 
+    def get_queryset(self):
+        return User.objects.all()
+
     def get_serializer_class(self):
         if self.action == 'user_login':
             return CustomTokenObtainPairSerializer
