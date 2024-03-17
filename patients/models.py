@@ -46,9 +46,8 @@ class Patient(models.Model):
         return str(self.patient_username)
     
     def save(self, *args, **kwargs) -> None:
-        if self.patient_username.gender == User.MALE:
-            if self.is_pregnant:
-                raise Exception("This Patient cannot be pregnant")
+        if self.patient_username.gender == User.MALE and self.is_pregnant:
+            raise Exception("This Patient cannot be pregnant")
         return super(Patient, self).save(*args, **kwargs)
 
     class Meta:

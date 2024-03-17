@@ -1,11 +1,12 @@
 from django.urls import path, include
 from rest_framework import routers
-from .views import get_disease_groups, RatingViewSets
+
+from hospital.views import HospitalViewSet
 
 router = routers.DefaultRouter()
-router.register('rating', RatingViewSets)
-  
+
+router.register('hospitals', HospitalViewSet)
+
 urlpatterns = [
-    path('disease', get_disease_groups, name='disease'),
     path('', include(router.urls)),
 ]

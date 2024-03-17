@@ -23,10 +23,21 @@ days_choice = (
     ('Sunday', 'Sunday'),
 )
 
+TYPE = (
+    ('Hospital', 'Hospital'),
+    ('Clinic', 'Clinic'),
+    ('Pharmacy', 'Pharmacy'),
+    ('Laboratory', 'Laboratory'),
+    ('Health Center', 'Health Center'),
+    ('Other', 'Other')
+)
+
 class Hospital(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    type = models.CharField(max_length=100, choices=TYPE, default=TYPE[0][0])
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=100)
+    main_photo = models.ImageField(upload_to=upload_path, blank=True, null=True)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100)
@@ -46,6 +57,14 @@ class Hospital(models.Model):
     @property
     def opening_hours(self):
         return self.hospital_opening_hour.all()
+    
+    @property
+    def services(self):
+        return self.hospital_services.all()
+    
+    @property
+    def galeries(self):
+        return self.hospital_galery.all()
     
 
 class Service(models.Model):

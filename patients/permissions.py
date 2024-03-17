@@ -12,7 +12,7 @@ class IsPatient(BasePermission):
             return False
 
     def has_object_permission(self, request, view, obj):
-        if obj.patient_username == request.user:
+        if obj.patient_username == request.user and Patient.objects.filter(patient_username=request.user).exists():
             return True
         return False
     
