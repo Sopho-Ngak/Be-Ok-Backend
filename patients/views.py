@@ -82,7 +82,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='doctors')
     def get_all_doctors(self, request):
         if request.method == 'GET':
-            doctors = Doctor.objects.all()
+            doctors = Doctor.objects.filter(doctor_documents__is_approved=True)
             serializer = DoctorInfoSerializer(doctors, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
     
