@@ -44,7 +44,7 @@ class PatientInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            # 'id',
+            'id',
             # 'patient_username',
             'blood_group',
             'alergies',
@@ -69,6 +69,7 @@ class MinumumPatientInfoSerializer(PatientInfoSerializer):
     class Meta:
         model = Patient
         fields = [
+            'id',
             'blood_group',
             'alergies',
             'chronic_diseases',
