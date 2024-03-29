@@ -1,7 +1,10 @@
 from django.utils import timezone
 # import serializers
 from rest_framework import serializers
-from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE, Appointement
+from patients.models import (
+    Patient, PatientReport, PatientDependentReport, ONLINE, Appointement,
+    PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest,
+    DependentsLabTest, PatientRecommendation, DependentsRecommendation)
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
 from doctors.models import Doctor, DoctorAvailability
@@ -103,6 +106,7 @@ class PatientReportSerializer(serializers.ModelSerializer):
             'recommendation',
             'medical_form',
             'is_paid',
+            'status',
             'created_at',
         ]
 
@@ -149,6 +153,7 @@ class PatientDependentReportSerializer(serializers.ModelSerializer):
             'dependent_recommendation',
             'medical_form',
             'is_paid',
+            'status',
             'created_at',
         ]
     
@@ -365,3 +370,115 @@ class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
     def get_appointment_happend_in(self, obj):
         return obj.happend_in()
 
+
+class PatientPrescriptionFormSerializer(serializers.ModelSerializer):
+    consultation_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientPrescriptionForm
+        fields = [
+            'id',
+            'consultation',
+            'consultation_details',
+            'form',
+            'created_at',
+        ]
+
+    def get_consultation_details(self, obj):
+        serializer = PatientReportSerializer(obj.consultation, context=self.context)
+        return serializer.data
+    
+class DependentsPrescriptionFormSerializer(serializers.ModelSerializer):
+    consultation_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DependentsPrescriptionForm
+        fields = [
+            'id',
+            'consultation',
+            'consultation_details',
+            'form',
+            'created_at',
+        ]
+
+    def get_consultation_details(self, obj):
+        serializer = PatientDependentReportSerializer(obj.consultation, context=self.context)
+        return serializer.data
+    
+class PatientLabTestSerializer(serializers.ModelSerializer):
+    consultation_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientLabTest
+        fields = [
+            'id',
+            'consultation',
+            'consultation_details',
+            'name',
+            'description',
+            'result',
+            'test_date',
+            'file',
+            'created_at',
+        ]
+
+    def get_consultation_details(self, obj):
+        serializer = PatientReportSerializer(obj.consultation, context=self.context)
+        return serializer.data
+    
+
+class DependentsLabTestSerializer(serializers.ModelSerializer):
+    consultation_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DependentsLabTest
+        fields = [
+            'id',
+            'consultation',
+            'consultation_details',
+            'name',
+            'description',
+            'result',
+            'test_date',
+            'file',
+            'created_at',
+        ]
+
+    def get_consultation_details(self, obj):
+        serializer = PatientDependentReportSerializer(obj.consultation, context=self.context)
+        return serializer.data
+    
+class PatientRecommendationSerializer(serializers.ModelSerializer):
+    consultation_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PatientRecommendation
+        fields = [
+            'id',
+            'consultation',
+            'consultation_details',
+            'form',
+            'created_at',
+        ]
+
+    def get_consultation_details(self, obj):
+        serializer = PatientReportSerializer(obj.consultation, context=self.context)
+        return serializer.data
+    
+
+class DependentsRecommendationSerializer(serializers.ModelSerializer):
+    consultation_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DependentsRecommendation
+        fields = [
+            'id',
+            'consultation',
+            'consultation_details',
+            'form',
+            'created_at',
+        ]
+
+    def get_consultation_details(self, obj):
+        serializer = PatientDependentReportSerializer(obj.consultation, context=self.context)
+        return serializer.data
