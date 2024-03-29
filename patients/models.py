@@ -11,6 +11,17 @@ from django.utils import timezone
 from accounts.models import User
 from doctors.models import Doctor, DoctorAvailability
 
+
+def medical_form_upload_path(instance, filename):
+    return '/'.join(['medical_forms', str(instance.patient_username.patient_username), filename])
+
+def prescribtion_form_upload_path(instance, filename):
+    return '/'.join(['prescriptions', str(instance.consultation.patient_username), filename])
+
+def lab_test_upload_path(instance, filename):
+    return '/'.join(['lab_tests', str(instance.consultation.patient_username.patient_username), filename])
+
+
 AI_CONSULTATION = 'ai'
 IN_PERSON = 'inperson'
 ONLINE = 'online'
@@ -20,6 +31,15 @@ CONSULTATION_TYPE = (
     (IN_PERSON, 'In Person'),
     (ONLINE, 'Online'),
     )
+
+CONSULTATION_STATUS = (
+    ('pending', 'Pending'),
+    ('completed', 'Completed'),
+    ('cancelled', 'Cancelled'),
+    ('rescheduled', 'Rescheduled'),
+    ('inprogress', 'In Progress'),
+    )
+
 class Patient(models.Model):
     BLOOD_GROUP_CHOICES = (
         ('--', '--'),
@@ -99,8 +119,9 @@ class PatientReport(models.Model):
     prescription = models.TextField(blank=True, null=True)
     recommended_tests = models.TextField(blank=True, null=True)
     recommendation = models.TextField(blank=True, null=True)
-    medical_form = models.FileField(upload_to='medical_forms/', blank=True, null=True)
+    medical_form = models.FileField(upload_to=medical_form_upload_path, blank=True, null=True)
     is_paid = models.BooleanField(default=False)
+    status = models.CharField(choices=CONSULTATION_STATUS, default=CONSULTATION_STATUS[0][0], max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -142,8 +163,9 @@ class PatientDependentReport(models.Model):
     email = models.EmailField(verbose_name='email address', max_length=255, unique=True, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default=User.OTHER)
-    medical_form = models.FileField(upload_to='medical_forms/', blank=True, null=True)
+    medical_form = models.FileField(upload_to=medical_form_upload_path, blank=True, null=True)
     is_paid = models.BooleanField(default=False)
+    status = models.CharField(choices=CONSULTATION_STATUS, default=CONSULTATION_STATUS[0][0], max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -211,5 +233,88 @@ class Appointement(models.Model):
         }
         return data
 
+    class Meta:
+        ordering = ['-created_at']
+
+
+class PatientPrescriptionForm(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.ForeignKey(PatientReport, on_delete=models.CASCADE, related_name='consultation_prescription')
+    form = models.FileField(upload_to=prescribtion_form_upload_path, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class DependentsPrescriptionForm(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.ForeignKey(PatientDependentReport, on_delete=models.CASCADE, related_name='dependent_consultation_prescription')
+    form = models.FileField(upload_to=prescribtion_form_upload_path, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class PatientLabTest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.ForeignKey(PatientReport, on_delete=models.CASCADE, related_name='patient_lab_tests')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    result = models.TextField(blank=True, null=True)
+    test_date = models.DateField(blank=True, null=True)
+    file = models.FileField(upload_to='lab_tests', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+
+class DependentsLabTest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.ForeignKey(PatientDependentReport, on_delete=models.CASCADE, related_name='dependent_lab_tests')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    result = models.TextField(blank=True, null=True)
+    test_date = models.DateField(blank=True, null=True)
+    file = models.FileField(upload_to=lab_test_upload_path, blank=True, null=True)
+    form = models.FileField(upload_to=lab_test_upload_path, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class PatientRecommendation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.ForeignKey(PatientReport, on_delete=models.CASCADE, related_name='patient_recommendations')
+    form = models.FileField(upload_to='recommendations', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class DependentsRecommendation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.ForeignKey(PatientDependentReport, on_delete=models.CASCADE, related_name='dependent_recommendations')
+    form = models.FileField(upload_to='recommendations', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
     class Meta:
         ordering = ['-created_at']

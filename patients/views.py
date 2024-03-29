@@ -1,6 +1,7 @@
 # Python imports
 
 # Django imports
+from math import e
 from django.conf import settings
 
 # Third party imports
@@ -11,13 +12,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
 # Local imports
-from patients.models import Patient, PatientReport, PatientDependentReport, Appointement
+from patients.models import Patient, PatientReport, PatientDependentReport, Appointement, PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, DependentsLabTest, PatientRecommendation, DependentsRecommendation
 from doctors.models import Doctor, DoctorAvailability
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
 from patients.permissions import IsPatient, IsDoctorOrPatient
 from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
-                                  PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer)
+                                PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer, PatientPrescriptionFormSerializer,
+                                DependentsPrescriptionFormSerializer, PatientLabTestSerializer, DependentsLabTestSerializer, PatientRecommendationSerializer,
+                                DependentsRecommendationSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
 from utils.ai_call import get_patient_result_from_ai
@@ -58,6 +61,18 @@ class PatientViewSet(viewsets.ModelViewSet):
 
         elif self.action == 'patient_appointment':
             return AppointmentSerializer
+        elif self.action == 'patient_prescription_form':
+            return PatientPrescriptionFormSerializer
+        elif self.action == 'dependents_prescription_form':
+            return DependentsPrescriptionFormSerializer
+        elif self.action == 'patient_lab_test':
+            return PatientLabTestSerializer
+        elif self.action == 'dependents_lab_test':
+            return DependentsLabTestSerializer
+        elif self.action == 'patient_recommendation':
+            return PatientRecommendationSerializer
+        elif self.action == 'dependents_recommendation':
+            return DependentsRecommendationSerializer
         
         return super().get_serializer_class()
     
@@ -300,31 +315,205 @@ class PatientViewSet(viewsets.ModelViewSet):
             except PatientDependentReport.DoesNotExist:
                 return Response({"message": "No patient dependent report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
             
-    # def get_paid_result(self, request):
-    #     id = request.query_params.get('id')
-    #     choice = request.query_params.get('choice')
-    #     print("#############",id, choice)
-    #     if request.method == 'GET':
-    #         if not id or not choice:
-    #             return Response({'message': 'Please provide an id and choice'}, status=status.HTTP_400_BAD_REQUEST)
-    #         try:
-    #             if choice == 'myself':
-    #                 report = PatientReport.objects.get(id=id)
-    #                 report.is_paid = True
-    #                 report.save()
-    #                 serializer = PatientReportSerializer(report, context={'request': request})
-    #                 return Response(serializer.data, status=status.HTTP_200_OK)
-                
-    #             dependent_report = PatientDependentReport.objects.get(id=id)
-    #             dependent_report.is_paid = True
-    #             dependent_report.save()
-    #             serializer = PatientDependentReportSerializer(dependent_report, context={'request': request})
-    #             return Response(serializer.data, status=status.HTTP_200_OK)
-    #         except PatientReport.DoesNotExist:
-    #             return Response({"message": "No patient report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
-    #         except PatientDependentReport.DoesNotExist:
-    #             return Response({"message": "No patient dependent report found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='p-prescription-form')
+    def patient_prescription_form(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        
+        elif request.method == 'GET':
+            if request.query_params.get('consultation_id'):
+
+                prescriptions = PatientPrescriptionForm.objects.filter(consultation__id=request.query_params.get('consultation_id'))
+                serializer = self.get_serializer(prescriptions, many=True, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
             
+            prescriptions = PatientPrescriptionForm.objects.filter(
+                consultation__patient_username__patient_username=request.user)
+            serializer = self.get_serializer(prescriptions, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('prescription_id'):
+                return Response({"message": "Please provide prescription id: prescription_id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                prescription = PatientPrescriptionForm.objects.get(id=request.query_params.get('prescription_id'))
+                serializer = self.get_serializer(prescription, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except PatientPrescriptionForm.DoesNotExist:
+                return Response({"message": "No prescription found with this id provided"}, status=status.HTTP_404_NOT_FOUND)   
+            
+
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='d-prescription-form')
+    def dependents_prescription_form(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        
+        elif request.method == 'GET':
+            if request.query_params.get('id'):
+                try:
+                    prescriptions = DependentsPrescriptionForm.objects.get(consultation__id=request.query_params.get('id'))
+                    serializer = self.get_serializer(prescriptions, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except PatientReport.DoesNotExist:
+                    return Response({"message": "No prescription found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            prescriptions = DependentsPrescriptionForm.objects.filter(
+                consultation__patient_username__patient_username=request.user)
+            serializer = self.get_serializer(prescriptions, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('id'):
+                return Response({"message": "Please provide prescription id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                prescription = DependentsPrescriptionForm.objects.get(id=request.query_params.get('id'))
+                serializer = self.get_serializer(prescription, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except DependentsPrescriptionForm.DoesNotExist:
+                return Response({"message": "No prescription found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='p-lab-test')
+    def patient_lab_test(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        
+        elif request.method == 'GET':
+            if request.query_params.get('consultation_id'):
+                lab_tests = PatientLabTest.objects.filter(consultation__id=request.query_params.get('consultation_id'))
+                serializer = self.get_serializer(lab_tests, many=True, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+                
+            lab_tests = PatientLabTest.objects.filter(
+                consultation__patient_username__patient_username=request.user)
+            serializer = self.get_serializer(lab_tests, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('lab_test_id'):
+                return Response({"message": "Please provide lab test id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                lab_test = PatientLabTest.objects.get(id=request.query_params.get('lab_test_id'))
+                serializer = self.get_serializer(lab_test, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except PatientLabTest.DoesNotExist:
+                return Response({"message": "No lab test found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='d-lab-test')
+    def dependents_lab_test(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        
+        elif request.method == 'GET':
+            if request.query_params.get('id'):
+                try:
+                    lab_tests = DependentsLabTest.objects.get(consultation__id=request.query_params.get('id'))
+                    serializer = self.get_serializer(lab_tests, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except PatientReport.DoesNotExist:
+                    return Response({"message": "No lab test found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            lab_tests = DependentsLabTest.objects.filter(
+                consultation__patient_username__patient_username=request.user)
+            serializer = self.get_serializer(lab_tests, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('id'):
+                return Response({"message": "Please provide lab test id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                lab_test = DependentsLabTest.objects.get(id=request.query_params.get('id'))
+                serializer = self.get_serializer(lab_test, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except DependentsLabTest.DoesNotExist:
+                return Response({"message": "No lab test found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='p-recommendation')
+    def patient_recommendation(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        
+        elif request.method == 'GET':
+            if request.query_params.get('consultation_id'):
+                try:
+                    recommendations = PatientRecommendation.objects.filter(consultation__id=request.query_params.get('consultation_id'))
+                    serializer = self.get_serializer(recommendations, many=True, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except PatientReport.DoesNotExist:
+                    return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            recommendations = PatientRecommendation.objects.filter(
+                consultation__patient_username__patient_username=request.user)
+            serializer = self.get_serializer(recommendations, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('recommendation_id'):
+                return Response({"message": "Please provide recommendation id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                recommendation = PatientRecommendation.objects.get(id=request.query_params.get('recommendation_id'))
+                serializer = self.get_serializer(recommendation, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except PatientRecommendation.DoesNotExist:
+                return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='d-recommendation')
+    def dependents_recommendation(self, request):
+        if request.method == 'POST':
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        
+        elif request.method == 'GET':
+            if request.query_params.get('id'):
+                try:
+                    recommendations = DependentsRecommendation.objects.get(consultation__id=request.query_params.get('id'))
+                    serializer = self.get_serializer(recommendations, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except PatientReport.DoesNotExist:
+                    return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            recommendations = DependentsRecommendation.objects.filter(
+                consultation__patient_username__patient_username=request.user)
+            serializer = self.get_serializer(recommendations, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('id'):
+                return Response({"message": "Please provide recommendation id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                recommendation = DependentsRecommendation.objects.get(id=request.query_params.get('id'))
+                serializer = self.get_serializer(recommendation, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except DependentsRecommendation.DoesNotExist:
+                return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=False, methods=['put', 'post'], url_path='payment')
     def patient_payment(self, request):
