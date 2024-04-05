@@ -11,6 +11,8 @@ migrate:
 run:
 	python manage.py runserver
 
+all-migrate: migration migrate
+
 superuser:
 	python manage.py createsuperuser
 

@@ -21,7 +21,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = ["*"]
 
@@ -225,9 +225,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'sopho',
-    'API_KEY': '724246444325248',
-    'API_SECRET': 'b6cUJFsNoBtUf_bibpdE74Udarg',
+    'CLOUD_NAME': env("CLOUDINARY_CLOUD_NAME"),
+    'API_KEY': env("CLOUDINARY_API_KEY"),
+    'API_SECRET': env("CLOUDINARY_API_SECRET"),
 }
 
 STATIC_URL = 'static/'
