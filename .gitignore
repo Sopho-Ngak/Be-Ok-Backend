@@ -25,7 +25,8 @@ media/*
 
 #Virtual Environment
 beokay/
+postgres_data
 
 # IDE
 .idea/
-.vscode/
+.vscode

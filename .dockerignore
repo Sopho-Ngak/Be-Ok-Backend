@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.docker
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+.pytest_cache
+.venv
+venv
+env
+
+# Environment
+# .env
+# env.env
+ai_error.log
+
+# Django
+db.sqlite3
+media/*
+!/media/default/
+!/media/default/**
+static
+postgres_data
+
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+.idea
+.vscode
+
+# Misc
+*.swp
+*.swo

@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+    db:
+        image: postgres
+        restart: always
+        ports:
+            - 5432:5432
+        environment:
+            POSTGRES_USER: ${PROD_DB_USER}
+            POSTGRES_PASSWORD: ${PROD_DB_PASSWORD}
+            POSTGRES_DB: ${PROD_DB_NAME}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        networks:
+            - beok-network
+
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: beok
+        image: beok-backend:latest
+        restart: always
+        volumes:
+            - .:/app
+        env_file:
+            - .env
+        environment:
+            - DEBUG=${DEBUG}
+            - PROD_DB_ENGINE=${PROD_DB_ENGINE}
+            - SECRET_KEY=${SECRET_KEY}
+            - PROD_DB_HOST=db
+            - PROD_DB_PORT=${PROD_DB_PORT}
+            - PROD_DB_NAME=${PROD_DB_NAME}
+            - PROD_DB_USER=${PROD_DB_USER}
+            - PROD_DB_PASSWORD=${PROD_DB_PASSWORD}
+            - API_KEY=${API_KEY}
+            - EMAIL_BACKEND=${EMAIL_BACKEND}
+            - EMAIL_HOST=${EMAIL_HOST}
+            - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+            - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+            - EMAIL_PORT=${EMAIL_PORT}
+            - EMAIL_USE_TLS=${EMAIL_USE_TLS}
+            - PAYPACK_APP_ID=${PAYPACK_APP_ID}
+            - PAYPACK_APP_SECRET=${PAYPACK_APP_SECRET}
+            - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+            - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+            - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+        ports:
+            - 8000:8000
+        depends_on:
+            - db
+        networks:
+            - beok-network
+
+volumes:
+    postgres_data:
+
+networks:
+    beok-network:
+        driver: bridge
