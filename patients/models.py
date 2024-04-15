@@ -195,16 +195,39 @@ class Appointement(models.Model):
         (INTERNAL_MEDICINE, 'Internal Medicine'),
         (CHRONIC_DISEASE, 'Chronic Disease'),
     )
+    ACCEPTED = 'accepted'
+    REJECTED = 'rejected'
+    PENDING = 'pending'
+    CANCELLED = 'cancelled'
 
+    INPROGRESS = 'inprogress'
+    COMPLETED = 'completed'
+
+    APPOINTEMENT_STATE = (
+        (PENDING, 'Pending'),
+        (INPROGRESS, 'In Progress'),
+        (COMPLETED, 'Completed'),
+    )
+
+    APPOINTEMENT_STATUS = (
+    (ACCEPTED, 'Accepted'),
+    (REJECTED, 'Rejected'),
+    (PENDING, 'Pending'),
+    (CANCELLED, 'Cancelled'),
+    )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_appointements')
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='doctor_appointements')
     service = models.CharField(choices=SERVICE_CHOICES, default=GENERAL_HEALTH, max_length=255)
     consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=ONLINE, max_length=255, blank=True, null=True)
-    consultation_note = models.TextField(blank=True, null=True)
+    describe_disease = models.TextField(blank=True, null=True)
     doctor_availability = models.ForeignKey(DoctorAvailability, on_delete=models.CASCADE, related_name='doctor_availability')
-    is_confirmed = models.BooleanField(default=False)
+    is_paid = models.BooleanField(default=False)
+    pain_area = models.CharField(choices=PatientReport.PAIN_AREA_CHOICES, default=PatientReport.PAIN_AREA_CHOICES[11][1], max_length=255, blank=True, null=True)
+    state = models.CharField(choices=APPOINTEMENT_STATE, default=APPOINTEMENT_STATE[0][1], max_length=50, blank=True, null=True)
+    status = models.CharField(choices=APPOINTEMENT_STATUS, default=APPOINTEMENT_STATUS[2][0], max_length=50)
+    rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

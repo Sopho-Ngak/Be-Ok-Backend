@@ -42,6 +42,6 @@ class PatientDependentReportAdmin(admin.ModelAdmin):
 
 @admin.register(Appointement)
 class AppointementAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'doctor', 'consultation_type', 'start_date', 'end_date', )
-    list_filter = ( 'is_confirmed','created_at',)
+    list_display = ('patient', 'doctor', 'consultation_type', 'is_paid', 'status', 'state')
+    list_filter = ( 'is_paid','status','state',)
 
