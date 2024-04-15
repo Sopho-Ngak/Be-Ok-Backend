@@ -99,14 +99,10 @@ class UserInfoSerializer(serializers.ModelSerializer):
         return None
     
     def get_profile_image(self, obj):
-        # try:
-        instance = ProfilePicture.objects.get(user=obj)
         request = self.context.get('request')
-        url = request.build_absolute_uri(instance.image.url)
-        # serializers = ProfilePictureSerializer(instance, context={"request":self.context}).data
+        url = request.build_absolute_uri(obj.profile_picture.image.url)
         return url
-        # except:
-        #     return None
+
     
 class ResetPasswordSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)

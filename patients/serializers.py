@@ -2,7 +2,7 @@ from django.utils import timezone
 # import serializers
 from rest_framework import serializers
 from patients.models import (
-    Patient, PatientReport, PatientDependentReport, ONLINE, Appointement,
+    Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
     PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest,
     DependentsLabTest, PatientRecommendation, DependentsRecommendation)
 from accounts.models import User
@@ -239,8 +239,39 @@ class PatientCashInSerializer(serializers.Serializer):
             raise serializers.ValidationError("Enter a valid phone number please")
         return data
 
+class UpdateAppointmentSerializer(serializers.ModelSerializer):
+    status = serializers.ChoiceField(choices=Appointement.APPOINTEMENT_STATUS)
+    rejection_reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    pain_area = serializers.CharField(read_only=True)
+    describe_disease = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Appointement
+        fields = [
+            "id",
+            "status",
+            "is_paid",
+            "pain_area",
+            "describe_disease",
+            "rejection_reason",
+        ]
+
+    def update(self, instance, validated_data):
+        status = validated_data.get('status')
+        rejection_reason = validated_data.get('rejection_reason')
+        if status == Appointement.REJECTED and not rejection_reason:
+            raise serializers.ValidationError("Kindly provide the reason of your rejection to notify the patient")
+        instance.status = status
+        instance.rejection_reason = rejection_reason
+        instance.save()
+        return instance
+
 class AppointmentSerializer(serializers.ModelSerializer):
-    is_confirmed = serializers.BooleanField(read_only=True)
+    is_paid = serializers.BooleanField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    rejection_reason = serializers.CharField(read_only=True)
+    service = serializers.ChoiceField(choices=Appointement.SERVICE_CHOICES)
+    consultation_type = serializers.ChoiceField(choices=CONSULTATION_TYPE)
     patient = serializers.UUIDField(default=serializers.CurrentUserDefault())
     patient_profile = serializers.SerializerMethodField()
     doctor_profile = serializers.SerializerMethodField()
@@ -258,9 +289,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "doctor_availability_details",
             "service",
             "consultation_type",
-            "consultation_note",
+            "describe_disease",
             "doctor_availability",
-            "is_confirmed",
+            "is_paid",
+            "pain_area",
+            "status",
+            "state",
+            "rejection_reason",
             "appointement_happen_in",
             "created_at",
         ]
@@ -282,7 +317,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             doctor_availability=available,
             service=validated_data.get('service'),
             consultation_type=validated_data.get('consultation_type'),
-            consultation_note=validated_data.get('consultation_note'),
+            describe_disease=validated_data.get('describe_disease'),
         )
         available.is_booked = True
         available.save()
@@ -302,7 +337,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         return serializer.data
     
     def get_appointement_happen_in(self, obj):
-        if obj.is_confirmed:
+        if obj.status == Appointement.ACCEPTED:
             return obj.happend_in()
         return "Appointment not confirmed by doctor yet"
     
