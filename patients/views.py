@@ -22,6 +22,7 @@ from patients.serializers import (PatientSerializer, PatientInfoSerializer, Pati
                                   DependentsRecommendationSerializer, UpdateAppointmentSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
+from doctors.permissions import IsDoctor
 from utils.ai_call import get_patient_result_from_ai
 from utils.payment_module import Payment
 from settings.models import BlackListedTransaction
@@ -85,6 +86,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated, IsDoctorOrPatient]
         elif self.action == 'patient_appointment':
             self.permission_classes = [IsAuthenticated, IsPatient]
+        elif self.action == 'appointment_actions':
+            self.permission_classes = [IsAuthenticated, IsDoctor]
         # elif self.action == 'get_paid_result':
         #     self.permission_classes = [IsAuthenticated, IsPatient]
         return super().get_permissions()
@@ -176,18 +179,23 @@ class PatientViewSet(viewsets.ModelViewSet):
     def appointment_actions(self, request):
 
         if request.method == 'PATCH':
+            print(request.query_params.get('appointment_id'))
             if not request.query_params.get('appointment_id'):
                 return Response({"message": "Please provide an id"}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 appointment = Appointement.objects.get(
                     id=request.query_params.get('appointment_id'))
+                print("instance", appointment)
                 serializer = UpdateAppointmentSerializer(
                     appointment, data=request.data, context={'request': request}, partial=True)
+                
                 serializer.is_valid(raise_exception=True)
+                print("serializer", serializer)
                 serializer.save()
+                print("serializer", serializer)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Appointement.DoesNotExist:
-                return Response({"message": "No appointment found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"message": "No appointment found with this id provided rr"}, status=status.HTTP_404_NOT_FOUND)
 
         elif request.method == 'PUT':
             transaction_ref = request.query_params.get('transaction_ref')
@@ -261,7 +269,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Appointement.DoesNotExist:
-                return Response({"message": "No appointment found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"message": "No appointment found with this id provided bb"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['post'], url_path='ai-consultation')
     def ai_consultation(self, request):

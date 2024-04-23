@@ -245,30 +245,48 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
     pain_area = serializers.CharField(read_only=True)
     describe_disease = serializers.CharField(read_only=True)
 
+
+    def validate(self, attrs):
+        if attrs.get('status') == Appointement.REJECTED and not attrs.get('rejection_reason'):
+            raise serializers.ValidationError("Kindly provide the reason of your rejection to notify the patient")
+        
+        if attrs.get('status') and attrs.get('status') not in [Appointement.ACCEPTED, Appointement.REJECTED]:
+            raise serializers.ValidationError("Doctor can only accept or reject an appointmentbb")
+        
+        if attrs.get('state') and attrs.get('state') not in [Appointement.INPROGRESS, Appointement.COMPLETED]:
+            raise serializers.ValidationError("appointment can only be in progress or completed state")
+        appoint_instance = Appointement.objects.get(id=attrs.get('id'))
+        
+        if attrs.get('state') and appoint_instance.status != Appointement.ACCEPTED:
+            raise serializers.ValidationError("Denied: Appointment is not accepted yet")
+        return super().validate(attrs)
+    
+
     class Meta:
         model = Appointement
         fields = [
             "id",
             "status",
+            "state",
             "is_paid",
             "pain_area",
             "describe_disease",
             "rejection_reason",
         ]
 
-    def update(self, instance, validated_data):
-        status = validated_data.get('status')
-        rejection_reason = validated_data.get('rejection_reason')
-        if status == Appointement.REJECTED and not rejection_reason:
-            raise serializers.ValidationError("Kindly provide the reason of your rejection to notify the patient")
-        instance.status = status
-        instance.rejection_reason = rejection_reason
-        instance.save()
-        return instance
+    # def update(self, instance, validated_data):
+    #     status = validated_data.get('status')
+    #     rejection_reason = validated_data.get('rejection_reason')
+    #     if status == Appointement.REJECTED and not rejection_reason:
+    #         raise serializers.ValidationError("Kindly provide the reason of your rejection to notify the patient")
+    #     instance.status = status
+    #     instance.rejection_reason = rejection_reason
+    #     instance.save()
+    #     return instance
 
 class AppointmentSerializer(serializers.ModelSerializer):
     is_paid = serializers.BooleanField(read_only=True)
-    status = serializers.CharField(read_only=True)
+    # status = serializers.CharField(read_only=True)
     rejection_reason = serializers.CharField(read_only=True)
     service = serializers.ChoiceField(choices=Appointement.SERVICE_CHOICES)
     consultation_type = serializers.ChoiceField(choices=CONSULTATION_TYPE)
@@ -277,6 +295,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
     doctor_profile = serializers.SerializerMethodField()
     doctor_availability_details = serializers.SerializerMethodField()
     appointement_happen_in = serializers.SerializerMethodField()
+
+    def validate(self, attrs):
+        if attrs.get('status') != Appointement.CANCELLED:
+            raise serializers.ValidationError("Denied: A patient can only cancel an appointment")
+        return super().validate(attrs)
     
     class Meta:
         model = Appointement
@@ -384,7 +407,7 @@ class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
             'doctor', 
             'service', 
             'consultation_type', 
-            'consultation_note',
+            'describe_disease',
             "appointment_happend_in",
             'is_confirmed',
             'created_at', 
