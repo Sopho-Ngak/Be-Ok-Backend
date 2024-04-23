@@ -1,6 +1,8 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework import serializers
 from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
+from django.core import exceptions as django_exceptions
 
 from accounts.models import User, VerificationCode, ProfilePicture
 from accounts.tasks import send_activation_code_via_email
@@ -38,6 +40,10 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     pass
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    # fcm_token = serializers.CharField(write_only=True, required=False)
+    # device_type = serializers.CharField(write_only=True, required=False)
+    # device_id = serializers.CharField(write_only=True, required=False)
+    # device_name = serializers.CharField(write_only=True, required=False)
     class Meta:
         model = User
         fields = [
@@ -46,16 +52,70 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'email', 
             'phone_number', 
             'address',
-            'user_type', 
+            'user_type',
+            # 'fcm_token',
+            # 'device_type',
+            # 'device_id',
+            # 'device_name', 
             'password'
             ]
         extra_kwargs = {'password': {'write_only': True}}
 
+    # def validate(self, attrs: dict):
+    #     if User.objects.filter(email=attrs.get('email')).exists():
+    #         raise serializers.ValidationError("Email already exists")
+    #     username: str = attrs.get('username')
+    #     if username.isnumeric():
+    #         raise serializers.ValidationError("Username cannot be all numbers")
+    #     if len(username.split()) > 1:
+    #         raise serializers.ValidationError("Username cannot contain spaces and must be a single word") 
+        
+    #     fcm_token = attrs.get('fcm_token')
+    #     device_type = attrs.get('device_type')
+    #     device_id = attrs.get('device_id')
+    #     device_name = attrs.get('device_name')
+    #     if fcm_token and device_type and device_id and device_name:
+    #         del attrs['fcm_token']
+    #         del attrs['device_type']
+    #         del attrs['device_id']
+    #         del attrs['device_name']
+
+    #     user = User(**attrs)
+    #     password = attrs.get("password")
+    #     try:
+    #         validate_password(password, user)
+    #     except django_exceptions.ValidationError as e:
+    #         serializer_error = serializers.as_serializer_error(e)
+    #         raise serializers.ValidationError(
+    #             {"password": serializer_error["non_field_errors"]}
+    #         )
+    #     return attrs
+    
     def create(self, validated_data):
         if not validated_data.get('username'):
             validated_data['username'] = validated_data.get('email').split('@')[0]
         user = User.objects.create(**validated_data)
         return user
+
+
+    # def create(self, validated_data: dict):
+    #     if validated_data.get('device_id') and validated_data.get('fcm_token') and validated_data.get('device_id') and validated_data.get('device_name'):
+    #         device_id = validated_data.pop('device_id')
+    #         fcm_token = validated_data.pop('fcm_token')
+    #         device_type = validated_data.pop('device_type')
+    #         device_name = validated_data.pop('device_name')
+    #         created = super().create(validated_data)
+    #         if fcm_token and device_type and device_id and device_name:
+    #             FCMDevice.objects.create(
+    #                 user=created,
+    #                 name=device_name,
+    #                 device_id=device_id,
+    #                 registration_id=fcm_token,
+    #                 type=device_type
+    #             )
+    #         return created
+    #     else:
+    #         return super().create(validated_data)
     
 class ProfilePictureSerializer(serializers.ModelSerializer):
     class Meta:

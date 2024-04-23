@@ -188,8 +188,12 @@ class PatientViewSet(viewsets.ModelViewSet):
                 appointment = Appointement.objects.get(
                     id=request.query_params.get('appointment_id'))
                 
-                if request.data.get('state') == Appointement.INPROGRESS  and appointment.status != Appointement.ACCEPTED or not appointment.is_paid:
-                    return Response({"message": "appointment should be accepted and paid before consultation"}, status=status.HTTP_400_BAD_REQUEST)
+                if request.data.get('state') == Appointement.INPROGRESS:
+                    if appointment.status != Appointement.ACCEPTED:
+                        return Response({"message": "appointment should be accepted before consultation starts"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    if not appointment.is_paid:
+                        return Response({"message": "appointment should be paid before consultation start"}, status=status.HTTP_400_BAD_REQUEST)                
                 
                 serializer = UpdateAppointmentSerializer(
                     appointment, data=request.data, context={'request': request}, partial=True)
