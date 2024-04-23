@@ -244,7 +244,7 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
     rejection_reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     pain_area = serializers.CharField(read_only=True)
     describe_disease = serializers.CharField(read_only=True)
-
+    is_paid = serializers.CharField(read_only=True)
 
     def validate(self, attrs):
         if attrs.get('status') == Appointement.REJECTED and not attrs.get('rejection_reason'):
@@ -253,12 +253,12 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
         if attrs.get('status') and attrs.get('status') not in [Appointement.ACCEPTED, Appointement.REJECTED]:
             raise serializers.ValidationError("Doctor can only accept or reject an appointmentbb")
         
-        if attrs.get('state') and attrs.get('state') not in [Appointement.INPROGRESS, Appointement.COMPLETED]:
-            raise serializers.ValidationError("appointment can only be in progress or completed state")
-        appoint_instance = Appointement.objects.get(id=attrs.get('id'))
+        # if attrs.get('state') and attrs.get('state') not in [Appointement.INPROGRESS, Appointement.COMPLETED]:
+        #     raise serializers.ValidationError("appointment can only be in progress or completed state")
+        # appoint_instance = Appointement.objects.get(id=attrs.get('id'))
         
-        if attrs.get('state') and appoint_instance.status != Appointement.ACCEPTED:
-            raise serializers.ValidationError("Denied: Appointment is not accepted yet")
+        # if request.data.get('state') and appointment.status != Appointement.ACCEPTED:
+        #     raise serializers.ValidationError("Denied: Appointment is not accepted yet")
         return super().validate(attrs)
     
 

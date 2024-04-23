@@ -179,20 +179,23 @@ class PatientViewSet(viewsets.ModelViewSet):
     def appointment_actions(self, request):
 
         if request.method == 'PATCH':
-            print(request.query_params.get('appointment_id'))
             if not request.query_params.get('appointment_id'):
                 return Response({"message": "Please provide an id"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if request.data.get('state') and request.data.get('state') not in [Appointement.INPROGRESS, Appointement.COMPLETED]:
+                return Response({"message": "appointment can only be in progress or completed state"}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 appointment = Appointement.objects.get(
                     id=request.query_params.get('appointment_id'))
-                print("instance", appointment)
+                
+                if request.data.get('state') == Appointement.INPROGRESS  and appointment.status != Appointement.ACCEPTED or not appointment.is_paid:
+                    return Response({"message": "appointment should be accepted and paid before consultation"}, status=status.HTTP_400_BAD_REQUEST)
+                
                 serializer = UpdateAppointmentSerializer(
                     appointment, data=request.data, context={'request': request}, partial=True)
                 
                 serializer.is_valid(raise_exception=True)
-                print("serializer", serializer)
                 serializer.save()
-                print("serializer", serializer)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Appointement.DoesNotExist:
                 return Response({"message": "No appointment found with this id provided rr"}, status=status.HTTP_404_NOT_FOUND)
