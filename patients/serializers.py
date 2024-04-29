@@ -296,11 +296,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
     doctor_availability_details = serializers.SerializerMethodField()
     appointement_happen_in = serializers.SerializerMethodField()
 
-    def validate(self, attrs):
-        if attrs.get('status') != Appointement.CANCELLED:
-            raise serializers.ValidationError("Denied: A patient can only cancel an appointment")
-        return super().validate(attrs)
-    
     class Meta:
         model = Appointement
         fields = [
@@ -323,6 +318,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+    def update(self, instance: Appointement, validated_data: dict):
+        if validated_data.get('status') != Appointement.CANCELLED:
+            raise serializers.ValidationError("Denied: A patient can only cancel an appointment")
+        return super().update(instance, validated_data)
     
     def create(self, validated_data):
 
