@@ -1,7 +1,11 @@
 from django.contrib import admin
 
-from patients.models import Patient, PatientReport, PatientDependentReport, Appointement
+from patients.models import Patient, PatientReport, PatientDependentReport, Appointement, PatientPayment, DependentsPayment
 # Register your models here.
+
+admin.site.register(PatientPayment)
+admin.site.register(DependentsPayment)
+
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
@@ -16,7 +20,7 @@ class PatientAdmin(admin.ModelAdmin):
 
 @admin.register(PatientReport)
 class PatientReportAdmin(admin.ModelAdmin):
-    list_display = ('patient_username', 'consulted_by_doctor', 'consultation_type', 'pain_area', )
+    list_display = ('patient_username', 'consulted_by_doctor', 'consultation_type', 'pain_area', 'created_at')
     list_filter = ('consultation_type', 'created_at')
     search_fields = (
         'patient_username__user__username', 

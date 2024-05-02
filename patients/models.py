@@ -185,6 +185,14 @@ class Appointement(models.Model):
     INTERNAL_MEDICINE = 'Internal Medicine'
     CHRONIC_DISEASE = 'Chronic Disease'
 
+    MYSELF = 'myself'
+    DEPENDENT = 'dependent'
+
+    PATIENT_CONCERN_CHOICES = (
+        (MYSELF, 'Myself'),
+        (DEPENDENT, 'Dependent'),
+    )
+
     SERVICE_CHOICES = (
         (MENTAAL_HEALTH, 'Mental Health'),
         (FERTILITY, 'Fertility'),
@@ -227,6 +235,7 @@ class Appointement(models.Model):
     pain_area = models.CharField(choices=PatientReport.PAIN_AREA_CHOICES, default=PatientReport.PAIN_AREA_CHOICES[11][1], max_length=255, blank=True, null=True)
     state = models.CharField(choices=APPOINTEMENT_STATE, default=APPOINTEMENT_STATE[0][1], max_length=50, blank=True, null=True)
     status = models.CharField(choices=APPOINTEMENT_STATUS, default=APPOINTEMENT_STATUS[2][0], max_length=50)
+    user_concerned = models.CharField(choices=PATIENT_CONCERN_CHOICES, default=MYSELF, max_length=50)
     rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -235,8 +244,20 @@ class Appointement(models.Model):
     
     @property
     def day(self):
-        return self.doctor_availability.day
+        return  self.doctor_availability.day 
     
+    @property
+    def payment(self):
+        if self.user_concerned == 'myself':
+            try:
+                return PatientPayment.objects.get(appointments=self)
+            except PatientPayment.DoesNotExist:
+                return None
+        else:
+            try:
+                return DependentsPayment.objects.get(appointments=self)
+            except DependentsPayment.DoesNotExist:
+                return None
     @property
     def start_date(self):
         return self.doctor_availability.starting_date
@@ -341,3 +362,25 @@ class DependentsRecommendation(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+class PatientPayment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.OneToOneField(PatientReport, on_delete=models.CASCADE, related_name='patient_payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_ref = models.CharField(max_length=255)
+    appointments = models.OneToOneField(Appointement, on_delete=models.CASCADE, related_name='appointement_payments')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class DependentsPayment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.OneToOneField(PatientDependentReport, on_delete=models.CASCADE, related_name='dependent_payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_ref = models.CharField(max_length=255)
+    appointments = models.OneToOneField(Appointement, on_delete=models.CASCADE, related_name='dependent_appointement_payments')
+    created_at = models.DateTimeField(auto_now_add=True)
