@@ -3,9 +3,9 @@ from django.utils.html import format_html
 
 # Register your models here.
 
-from settings.models import DiseaseCategorie, DoctorRate
+from settings.models import DiseaseCategorie, DoctorRate, BlackListedTransaction
 
-# admin.site.register(DoctorRate)
+admin.site.register(BlackListedTransaction)
 
 @admin.register(DiseaseCategorie)
 class DiseaseCategoryAdmin(admin.ModelAdmin):

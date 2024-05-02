@@ -4,7 +4,7 @@ from rest_framework import serializers
 from patients.models import (
     Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
     PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest,
-    DependentsLabTest, PatientRecommendation, DependentsRecommendation)
+    DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment)
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
 from doctors.models import Doctor, DoctorAvailability
@@ -12,6 +12,31 @@ from doctors.serializers import MinimumDoctorInfoSerializer, DoctorAvailabilityS
 
 from utils.payment_module import Payment
 
+
+class PatientPaymentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PatientPayment
+        fields = [
+            'id',
+            'consultation',
+            'amount',
+            'transaction_ref',
+            'created_at',
+        ]
+
+
+class DependentsPaymentSerializer(serializers.ModelSerializer):
+    
+        class Meta:
+            model = DependentsPayment
+            fields = [
+                'id',
+                'consultation',
+                'amount',
+                'transaction_ref',
+                'created_at',
+            ]
 
 class DependeeInfoSerializer(serializers.ModelSerializer):
     age = serializers.SerializerMethodField(read_only=True)
@@ -245,6 +270,7 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
     pain_area = serializers.CharField(read_only=True)
     describe_disease = serializers.CharField(read_only=True)
     is_paid = serializers.CharField(read_only=True)
+    payment_details = serializers.SerializerMethodField()
 
     def validate(self, attrs):
         if attrs.get('status') == Appointement.REJECTED and not attrs.get('rejection_reason'):
@@ -270,9 +296,18 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
             "state",
             "is_paid",
             "pain_area",
+            "user_concerned",
             "describe_disease",
             "rejection_reason",
+            "payment_details",
         ]
+
+    def get_payment_details(self, obj: Appointement):
+        if obj.user_concerned == Appointement.MYSELF:
+            payment = PatientPaymentSerializer(obj.payment)
+            return payment.data
+        
+        return DependentsPaymentSerializer(obj.payment).data
 
     # def update(self, instance, validated_data):
     #     status = validated_data.get('status')
@@ -295,6 +330,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     doctor_profile = serializers.SerializerMethodField()
     doctor_availability_details = serializers.SerializerMethodField()
     appointement_happen_in = serializers.SerializerMethodField()
+    payment_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointement
@@ -313,6 +349,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "pain_area",
             "status",
             "state",
+            "user_concerned",
+            "payment_details",
             "rejection_reason",
             "appointement_happen_in",
             "created_at",
@@ -323,10 +361,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Denied: A patient can only cancel an appointment")
         return super().update(instance, validated_data)
     
-    def create(self, validated_data):
+    def create(self, validated_data: dict):
 
         try:
-            available = validated_data.get('doctor').doctor_availabilities.get(id=validated_data.get('doctor_availability').id, is_booked=False)
+            available : DoctorAvailability = validated_data.get('doctor').doctor_availabilities.get(id=validated_data.get('doctor_availability').id, is_booked=False)
             patient = Patient.objects.get(patient_username__id=validated_data.get('patient').id)
         except DoctorAvailability.DoesNotExist:
             raise serializers.ValidationError("Doctor availability not found or already booked")
@@ -346,19 +384,26 @@ class AppointmentSerializer(serializers.ModelSerializer):
         
         return appointment
     
-    def get_doctor_profile(self, obj):
+    def get_payment_details(self, obj: Appointement):
+        if obj.user_concerned == Appointement.MYSELF:
+            payment = PatientPaymentSerializer(obj.payment)
+            return payment.data
+        
+        return DependentsPaymentSerializer(obj.payment).data
+    
+    def get_doctor_profile(self, obj: Appointement):
         serializer = MinimumDoctorInfoSerializer(obj.doctor, context=self.context)
         return serializer.data
     
-    def get_patient_profile(self, obj):
+    def get_patient_profile(self, obj: Appointement):
         serializer = MinumumPatientInfoSerializer(obj.patient, context=self.context)
         return serializer.data
     
-    def get_doctor_availability_details(self, obj):
+    def get_doctor_availability_details(self, obj: Appointement):
         serializer = DoctorAvailabilitySerializer(obj.doctor_availability, context=self.context)
         return serializer.data
     
-    def get_appointement_happen_in(self, obj):
+    def get_appointement_happen_in(self, obj: Appointement):
         if obj.status == Appointement.ACCEPTED:
             return obj.happend_in()
         return "Appointment not confirmed by doctor yet"
@@ -384,11 +429,11 @@ class PatientAppointmentInfoSerializer(serializers.ModelSerializer):
 
         ]
 
-    def get_doctor_profile(self, obj):
+    def get_doctor_profile(self, obj: Appointement):
         serializer = MinimumDoctorInfoSerializer(obj.doctor, context=self.context)
         return serializer.data
     
-    def getdoctor_availability_details(self, obj):
+    def getdoctor_availability_details(self, obj: Appointement):
         serializer = DoctorAvailabilitySerializer(obj.doctor_availability, context=self.context)
         return serializer.data
     
