@@ -17,7 +17,8 @@ from doctors.serializers import (
     DoctorDocumentSerializer, DoctorAvailabilitySerializer, DoctorInfoSerializer,
     DoctorSerializer)
 from patients.models import Appointement, PatientReport, PatientDependentReport, Patient
-from patients.serializers import DoctorAppointmentInfoSerializer, PatientReportSerializer, PatientDependentReportSerializer
+from patients.serializers import (DoctorAppointmentInfoSerializer, PatientReportSerializer, PatientDependentReportSerializer,
+                                  UpdateAppointmentSerializer)
 from accounts.models import User
 
 # @api_view(['GET'])
@@ -50,8 +51,8 @@ class DoctorViewSet(viewsets.ModelViewSet):
             case 'doctor_consultation':
                 match self.request.method:
                     case 'GET' | 'POST' | 'PATCH':
-                        match self.request.query_params.get('consult_type'):
-                            case 'patient':
+                        match self.request.query_params.get('user_conserned'):
+                            case 'me':
                                 return PatientReportSerializer
                             case 'dependent':
                                 return PatientDependentReportSerializer
@@ -143,35 +144,47 @@ class DoctorViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         elif request.method == 'PATCH':
-            id = request.query_params.get('id')
-            if not id:
-                return Response({'message': 'Please provide appointment id'}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.query_params.get('appointment_id'):
+                return Response({"message": "Please provide an id"}, status=status.HTTP_400_BAD_REQUEST)
             
+            if request.data.get('state') and request.data.get('state') not in [Appointement.INPROGRESS, Appointement.COMPLETED]:
+                return Response({"message": "appointment can only be in progress or completed state"}, status=status.HTTP_400_BAD_REQUEST)
             try:
-                appointment = Appointement.objects.get(id=id)
-                appointment.is_confirmed = True
-                appointment.save()
-                serializer = self.get_serializer(appointment)
+                appointment = Appointement.objects.get(
+                    id=request.query_params.get('appointment_id'))
+                
+                if request.data.get('state') == Appointement.INPROGRESS:
+                    if appointment.status != Appointement.ACCEPTED:
+                        return Response({"message": "appointment should be accepted before consultation starts"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    if not appointment.is_paid:
+                        return Response({"message": "appointment should be paid before consultation start"}, status=status.HTTP_400_BAD_REQUEST)                
+                
+                serializer = UpdateAppointmentSerializer(
+                    appointment, data=request.data, context={'request': request}, partial=True)
+                
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Appointement.DoesNotExist:
-                return Response({'message': 'No appointment found with the id provided'}, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({"message": "No appointment found with this id provided rr"}, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=False, methods=['get', 'post', 'patch'], url_path='consultation')
     def doctor_consultation(self, request):
         if request.method == 'GET':
             consult_id = request.query_params.get('consult_id')
-            consult_type = request.query_params.get('consult_type')
+            user_conserned = request.query_params.get('user_conserned')
 
             if consult_id:            
-                if consult_type not in ['patient', 'dependent']:
-                    return Response({'message': 'Please provide correct consultation type'}, status=status.HTTP_400_BAD_REQUEST)
+                if user_conserned not in ['me', 'dependent']:
+                    return Response({'message': 'user_concerned should be in ["me", "dependent"]'}, status=status.HTTP_400_BAD_REQUEST)
             
                 try:
-                    if consult_type == 'patient':
+                    if user_conserned == 'me':
                         consultation = PatientReport.objects.get(id=consult_id)
                         serializer = self.get_serializer(consultation)
                         return Response(serializer.data, status=status.HTTP_200_OK)
-                    elif consult_type == 'dependent':
+                    elif user_conserned == 'dependent':
                         consultation = PatientDependentReport.objects.get(id=consult_id)
                         serializer = self.get_serializer(consultation)
                         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -197,7 +210,7 @@ class DoctorViewSet(viewsets.ModelViewSet):
             '''
             Doctor making consultation
             '''
-            if not request.query_params.get('consult_type'):
+            if not request.query_params.get('user_conserned'):
                 return Response({'message': 'Please provide consultation type'}, status=status.HTTP_400_BAD_REQUEST)
             
             try:
@@ -218,22 +231,22 @@ class DoctorViewSet(viewsets.ModelViewSet):
             Doctor updating consultation
             '''
             consult_id = request.query_params.get('consult_id')
-            consult_type = request.query_params.get('consult_type')
+            user_conserned = request.query_params.get('user_conserned')
 
-            if consult_type not in ['patient', 'dependent']:
-                return Response({'message': 'Please provide correct consultation type'}, status=status.HTTP_400_BAD_REQUEST)
+            if user_conserned not in ['me', 'dependent']:
+                return Response({'message': 'user_conserned should be in ["me", "dependent"]'}, status=status.HTTP_400_BAD_REQUEST)
             
             if not consult_id:
                 return Response({'message': 'Please provide consultation id'}, status=status.HTTP_400_BAD_REQUEST)
 
             try:
-                if consult_type == 'patient':
+                if user_conserned == 'me':
                     consultation = PatientReport.objects.get(id=consult_id)
                     serializer = self.get_serializer(consultation, data=request.data, partial=True)
                     serializer.is_valid(raise_exception=True)
                     serializer.save(consulted_by_doctor=Doctor.objects.get(user=request.user))
                     return Response(serializer.data, status=status.HTTP_200_OK)
-                elif consult_type == 'dependent':
+                elif user_conserned == 'dependent':
                     consultation = PatientDependentReport.objects.get(id=consult_id)
                     serializer = self.get_serializer(consultation, data=request.data, partial=True)
                     serializer.is_valid(raise_exception=True)
