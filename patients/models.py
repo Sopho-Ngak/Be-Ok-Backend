@@ -365,7 +365,6 @@ class DependentsRecommendation(models.Model):
 
 class PatientPayment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    consultation = models.OneToOneField(PatientReport, on_delete=models.CASCADE, related_name='patient_payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_ref = models.CharField(max_length=255)
     appointments = models.OneToOneField(Appointement, on_delete=models.CASCADE, related_name='appointement_payments')
@@ -379,7 +378,6 @@ class PatientPayment(models.Model):
 
 class DependentsPayment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    consultation = models.OneToOneField(PatientDependentReport, on_delete=models.CASCADE, related_name='dependent_payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_ref = models.CharField(max_length=255)
     appointments = models.OneToOneField(Appointement, on_delete=models.CASCADE, related_name='dependent_appointement_payments')

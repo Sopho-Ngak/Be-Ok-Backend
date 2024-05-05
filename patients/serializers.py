@@ -19,7 +19,6 @@ class PatientPaymentSerializer(serializers.ModelSerializer):
         model = PatientPayment
         fields = [
             'id',
-            'consultation',
             'amount',
             'transaction_ref',
             'created_at',
@@ -32,7 +31,6 @@ class DependentsPaymentSerializer(serializers.ModelSerializer):
             model = DependentsPayment
             fields = [
                 'id',
-                'consultation',
                 'amount',
                 'transaction_ref',
                 'created_at',

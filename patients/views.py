@@ -245,38 +245,24 @@ class PatientViewSet(viewsets.ModelViewSet):
                     appointment.save()
 
                     if choice == 'me':
-                        consultation = PatientReport.objects.create(
-                            patient_username=appointment.patient,
-                            consultation_type=appointment.consultation_type,
-                            consulted_by_doctor=appointment.doctor,
-                            is_paid=True,
-                            pain_area=appointment.pain_area)
-                        
+
                         PatientPayment.objects.get_or_create(
-                            consultation=consultation,
                             amount=response['amount'],
                             transaction_ref=transaction_ref,
                             appointments=appointment,
                         )
                     else:
-                        consultation = PatientDependentReport.objects.create(
-                            patient_username=appointment.patient,
-                            consultation_type=appointment.consultation_type,
-                            consulted_by_doctor=appointment.doctor,
-                            is_paid=True,
-                            # pain_area=appointment.pain_area
-                            )
-                        
                         DependentsPayment.objects.create(
-                            consultation=consultation,
                             amount=response['amount'],
                             transaction_ref=transaction_ref,
                             appointments=appointment,
                         )
+                    serializer = AppointmentSerializer(
+                        appointment, context={'request': request})
 
                     # Blacklist transaction to be able to use it only once
                     payment.blacklist_transaction(transaction_ref, **response)
-                    return Response({"message": "Appointment paid successfully"}, status=status.HTTP_200_OK)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
                 except Appointement.DoesNotExist:
                     return Response({"message": "No appointment found with this transaction reference provided"}, status=status.HTTP_404_NOT_FOUND)
 
