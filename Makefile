@@ -16,4 +16,7 @@ all-migrate: migration migrate
 superuser:
 	python manage.py createsuperuser
 
+shell:
+	python manage.py shell
+
 all: install migration migrate

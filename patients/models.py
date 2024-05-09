@@ -185,11 +185,11 @@ class Appointement(models.Model):
     INTERNAL_MEDICINE = 'Internal Medicine'
     CHRONIC_DISEASE = 'Chronic Disease'
 
-    MYSELF = 'myself'
+    MYSELF = 'me'
     DEPENDENT = 'dependent'
 
     PATIENT_CONCERN_CHOICES = (
-        (MYSELF, 'Myself'),
+        (MYSELF, 'me'),
         (DEPENDENT, 'Dependent'),
     )
 
@@ -248,7 +248,7 @@ class Appointement(models.Model):
     
     @property
     def payment(self):
-        if self.user_concerned == 'myself':
+        if self.user_concerned == 'me':
             try:
                 return PatientPayment.objects.get(appointments=self)
             except PatientPayment.DoesNotExist:
@@ -365,6 +365,7 @@ class DependentsRecommendation(models.Model):
 
 class PatientPayment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.OneToOneField(PatientReport, on_delete=models.CASCADE, related_name='patient_payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_ref = models.CharField(max_length=255)
     appointments = models.OneToOneField(Appointement, on_delete=models.CASCADE, related_name='appointement_payments')
@@ -378,6 +379,7 @@ class PatientPayment(models.Model):
 
 class DependentsPayment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    consultation = models.OneToOneField(PatientDependentReport, on_delete=models.CASCADE, related_name='dependent_payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_ref = models.CharField(max_length=255)
     appointments = models.OneToOneField(Appointement, on_delete=models.CASCADE, related_name='dependent_appointement_payments')
