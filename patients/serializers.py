@@ -19,6 +19,7 @@ class PatientPaymentSerializer(serializers.ModelSerializer):
         model = PatientPayment
         fields = [
             'id',
+            'consultation',
             'amount',
             'transaction_ref',
             'created_at',
@@ -31,6 +32,7 @@ class DependentsPaymentSerializer(serializers.ModelSerializer):
             model = DependentsPayment
             fields = [
                 'id',
+                'consultation',
                 'amount',
                 'transaction_ref',
                 'created_at',
@@ -362,7 +364,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data: dict):
 
         try:
-            available : DoctorAvailability = validated_data.get('doctor').doctor_availabilities.get(id=validated_data.get('doctor_availability').id, is_booked=False)
+            available : DoctorAvailability = validated_data.get('doctor').doctor_availabilities.get(
+                id=validated_data.get('doctor_availability').id, is_booked=False)
             patient = Patient.objects.get(patient_username__id=validated_data.get('patient').id)
         except DoctorAvailability.DoesNotExist:
             raise serializers.ValidationError("Doctor availability not found or already booked")
@@ -384,8 +387,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
     
     def get_payment_details(self, obj: Appointement):
         if obj.user_concerned == Appointement.MYSELF:
-            payment = PatientPaymentSerializer(obj.payment)
-            return payment.data
+            if obj.payment:
+                payment = PatientPaymentSerializer(obj.payment)
+                return payment.data
+            return 'Pending payment'
         
         return DependentsPaymentSerializer(obj.payment).data
     
@@ -442,6 +447,7 @@ class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
     patient = serializers.SerializerMethodField()
     doctor_availability = serializers.SerializerMethodField()
     appointment_happend_in = serializers.SerializerMethodField()
+    payment_details = serializers.SerializerMethodField()
     class Meta:
         model = Appointement
         fields = [
@@ -452,6 +458,7 @@ class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
             'describe_disease',
             "appointment_happend_in",
             'is_paid',
+            'payment_details',
             'pain_area',
             'state',
             'status',
@@ -460,17 +467,26 @@ class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
             'patient', 
             ]
     
-    def get_patient(self, obj):
+    def get_patient(self, obj: Appointement):
         serializer = MinumumPatientInfoSerializer(obj.patient, context=self.context)
         return serializer.data
     
+    def get_payment_details(self, obj: Appointement):
+        if obj.user_concerned == Appointement.MYSELF:
+            if obj.payment:
+                payment = PatientPaymentSerializer(obj.payment)
+                return payment.data
+            return 'Pending payment'
+        
+        if obj.payment:
+            return DependentsPaymentSerializer(obj.payment).data
+        return 'Pending payment'
 
-    
-    def get_doctor_availability(self, obj):
+    def get_doctor_availability(self, obj: Appointement):
         serializer = DoctorAvailabilitySerializer(obj.doctor_availability)
         return serializer.data
     
-    def get_appointment_happend_in(self, obj):
+    def get_appointment_happend_in(self, obj: Appointement):
         return obj.happend_in()
 
 

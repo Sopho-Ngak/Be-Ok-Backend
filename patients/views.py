@@ -211,23 +211,29 @@ class PatientViewSet(viewsets.ModelViewSet):
         elif request.method == 'PUT':
             transaction_ref = request.query_params.get('transaction_ref')
             appointment_id = request.query_params.get('appointment_id')
-            choice = request.query_params.get('choice')
-            if not transaction_ref or not appointment_id or not choice:
+            if not transaction_ref or not appointment_id:
                 return Response({"message": "'transaction_ref', 'appointment_id' and 'choice' is required"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if transaction is blacklisted
             blacklisted_transaction = BlackListedTransaction.objects.filter(
                 reference_key=transaction_ref)
-
-            if choice == 'me':
-                appointment_already_paid = PatientPayment.objects.filter(appointments__id=appointment_id)
-            else:
-                appointment_already_paid = DependentsPayment.objects.filter(appointments__id=appointment_id)
-
-
+            
             if blacklisted_transaction.exists():
                 return Response({"message": "Invalid Transaction"}, status=status.HTTP_400_BAD_REQUEST)
             
+            try:
+                appointment: Appointement = Appointement.objects.get(
+                        id=appointment_id)
+            except Appointement.DoesNotExist:
+                return Response({"message": "No appointment found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            if appointment.status != Appointement.ACCEPTED:
+                return Response({"message": "appointment should be accepted by doctor before payment"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if appointment.user_concerned == 'me':
+                appointment_already_paid = PatientPayment.objects.filter(appointments__id=appointment_id)
+            else:
+                appointment_already_paid = DependentsPayment.objects.filter(appointments__id=appointment_id)
             if appointment_already_paid.exists():
                 return Response({"error": "Invalid Appointment ID or This aapointment has been recorded as paid already"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -238,34 +244,43 @@ class PatientViewSet(viewsets.ModelViewSet):
                 if response['amount'] <= 0:
                     return Response({"message": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
 
-                try:
-                    appointment: Appointement = Appointement.objects.get(
-                        id=appointment_id)
-                    appointment.is_paid = True
-                    appointment.save()
+                if appointment.user_concerned == 'me':
 
-                    if choice == 'me':
+                    consultation = PatientReport.objects.create(
+                        patient_username=appointment.patient,
+                        consulted_by_doctor=appointment.doctor,
+                        consultation_type=appointment.consultation_type,
+                        pain_area=appointment.pain_area,
+                        is_paid=True,)
 
-                        PatientPayment.objects.get_or_create(
-                            amount=response['amount'],
-                            transaction_ref=transaction_ref,
-                            appointments=appointment,
-                        )
-                    else:
-                        DependentsPayment.objects.create(
-                            amount=response['amount'],
-                            transaction_ref=transaction_ref,
-                            appointments=appointment,
-                        )
-                    serializer = AppointmentSerializer(
-                        appointment, context={'request': request})
+                    PatientPayment.objects.get_or_create(
+                        consultation=consultation,
+                        amount=response['amount'],
+                        transaction_ref=transaction_ref,
+                        appointments=appointment,
+                    )
+                else:
+                    consultation = PatientDependentReport.objects.create(
+                        patient_username=appointment.patient,
+                        consulted_by_doctor=appointment.doctor,
+                        consultation_type=appointment.consultation_type,
+                        pain_area=appointment.pain_area,
+                        is_paid=True,)
+                    DependentsPayment.objects.create(
+                        consultation=consultation,
+                        amount=response['amount'],
+                        transaction_ref=transaction_ref,
+                        appointments=appointment,
+                    )
+                serializer = AppointmentSerializer(
+                    appointment, context={'request': request})
+                
+                appointment.is_paid = True
+                appointment.save()
 
-                    # Blacklist transaction to be able to use it only once
-                    payment.blacklist_transaction(transaction_ref, **response)
-                    return Response(serializer.data, status=status.HTTP_200_OK)
-                except Appointement.DoesNotExist:
-                    return Response({"message": "No appointment found with this transaction reference provided"}, status=status.HTTP_404_NOT_FOUND)
-
+                # Blacklist transaction to be able to use it only once
+                payment.blacklist_transaction(transaction_ref, **response)
+                return Response(serializer.data, status=status.HTTP_200_OK)          
             return Response({"message": "No transaction found with this reference provided"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['post', 'get', 'patch'], url_path='appointment')
