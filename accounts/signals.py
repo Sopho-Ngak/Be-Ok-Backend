@@ -27,18 +27,19 @@ def create_user_profile(sender, instance, created, **kwargs):
         user_type = instance.user_type
         ProfilePicture.objects.get_or_create(user=instance)
 
-        if user_type == User.DOCTOR:
-            doctor_instance = Doctor.objects.create(user=instance)
-            DoctorDocument.objects.create(doctor=doctor_instance)
-        elif user_type == User.PATIENT:
-            Patient.objects.create(patient_username=instance)
-        user_code = VerificationCode.objects.create(user=instance, email=instance.email, code=get_random_code(4))
-        return send_activation_code_via_email(user_code.id)
+        # if user_type == User.DOCTOR:
+        #     doctor_instance = Doctor.objects.create(user=instance)
+        #     DoctorDocument.objects.create(doctor=doctor_instance)
+        # elif user_type == User.PATIENT:
+        #     Patient.objects.create(patient_username=instance)
+        # user_code = VerificationCode.objects.create(user=instance, email=instance.email, code=get_random_code(4))
+        # return send_activation_code_via_email(user_code.id)
+        return 
     
-    if instance.user_type == User.DOCTOR:
-        return Doctor.objects.get_or_create(user=instance)
-    elif instance.user_type == User.PATIENT:
-        return Patient.objects.get_or_create(patient_username=instance)
+    # if instance.user_type == User.DOCTOR:
+    #     Doctor.objects.get_or_create(user=instance)
+    # elif instance.user_type == User.PATIENT:
+    #     return Patient.objects.get_or_create(patient_username=instance)
 
         # send email
         # try:

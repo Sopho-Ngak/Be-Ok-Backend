@@ -1,14 +1,58 @@
+from pydoc import doc
 from django.utils import timezone
 # import serializers
 from rest_framework import serializers
+from accounts.models import User
 import patients
 # from patients.models import Patient, PatientReport, PatientDependentReport, ONLINE, Appointement
 # from accounts.models import User
-from accounts.serializers import UserInfoSerializer
+from accounts.serializers import UserInfoSerializer, UserCreateSerializer
 from doctors.models import Doctor, DoctorDocument, DoctorAvailability
 import patients.serializers as patient_serializers
 # from doctors.models import DiseaseGroup, Disease
 
+
+
+class DoctorRegistrationSerializer(UserCreateSerializer):
+    identity_number = serializers.CharField(write_only=True, required=False)
+    license_number = serializers.CharField(write_only=True, required=True)
+    specialities = serializers.CharField(write_only=True, required=True)
+    profession = serializers.CharField(write_only=True, required=True)
+    physical_consultation = serializers.BooleanField(write_only=True, required=False)
+    online_consultation = serializers.BooleanField(write_only=True, required=False)
+    document = serializers.FileField(write_only=True, required=True)
+    
+    # append the fields to the fields list in parent clasee
+    class Meta(UserCreateSerializer.Meta):
+        fields = UserCreateSerializer.Meta.fields + [
+            'identity_number',
+            'license_number',
+            'specialities',
+            'profession',
+            'physical_consultation',
+            'online_consultation',
+            'document',
+        ]
+
+    def create(self, validated_data):
+        validated_data['user_type'] = User.DOCTOR
+        doctor_data = {
+            'physical_consultation': validated_data.pop('physical_consultation', False),
+            'online_consultation': validated_data.pop('online_consultation', False),
+            'specialties': validated_data.pop('specialities'),
+            'profession': validated_data.pop('profession'),
+        }
+
+        document_date = {
+            'licence_number': validated_data.pop('license_number'),
+            'document': validated_data.pop('document'),
+        }
+
+        user = super().create(validated_data)
+        doctor = Doctor.objects.create(user=user, **doctor_data)
+        DoctorDocument.objects.create(doctor=doctor, **document_date)
+
+        return doctor
 
 
 class DoctorSerializer(serializers.ModelSerializer):

@@ -1,0 +1,7 @@
+openapi: 3.0.3
+info:
+  title: BEOK BACKEND API
+  version: 1.0.0
+  description: API for BeOk Backend
+paths: {}
+components: {}

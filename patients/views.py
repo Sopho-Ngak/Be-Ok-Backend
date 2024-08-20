@@ -11,8 +11,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
 # Local imports
+import patients
 from patients.models import (Patient, PatientReport, PatientDependentReport, Appointement, PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, 
-                             DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment, ONLINE)
+                             DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment, ONLINE, Dependent,
+                             DependentProfilePicture)
 from doctors.models import Doctor, DoctorAvailability
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
@@ -20,7 +22,7 @@ from patients.permissions import IsPatient, IsDoctorOrPatient
 from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer, PatientPrescriptionFormSerializer,
                                   DependentsPrescriptionFormSerializer, PatientLabTestSerializer, DependentsLabTestSerializer, PatientRecommendationSerializer,
-                                  DependentsRecommendationSerializer, UpdateAppointmentSerializer)
+                                  DependentsRecommendationSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
 from doctors.permissions import IsDoctor
@@ -77,6 +79,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             return DependentsRecommendationSerializer
         elif self.action == 'appointment_actions':
             return UpdateAppointmentSerializer
+        elif self.action == 'register':
+            return PatientRegistrationSerializer
 
         return super().get_serializer_class()
 
@@ -92,9 +96,55 @@ class PatientViewSet(viewsets.ModelViewSet):
                 self.permission_classes += [IsPatient]
             elif self.request.method == 'PATCH':
                 self.permission_classes += [IsDoctor]
+        elif self.action == 'register':
+            self.permission_classes = [AllowAny]
         # elif self.action == 'get_paid_result':
         #     self.permission_classes = [IsAuthenticated, IsPatient]
         return super().get_permissions()
+    
+    @action(detail=False, methods=['post'], url_path='registration')
+    def register(self, request):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        serializer.instance.patient_username.set_password(serializer.validated_data.get('password'))
+        serializer.instance.patient_username.save()
+
+        patient_serializer = PatientInfoSerializer(serializer.instance, context={'request': request})
+        return Response(patient_serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post', 'get', 'patch'], url_path='dependent')
+    def patient_dependent(self, request):
+        if request.method == 'POST':
+            serializer = DependentSerializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        elif request.method == 'GET':
+            if request.query_params.get('id'):
+                try:
+                    dependent = Dependent.objects.get(id=request.query_params.get('id'), patient__patient_username=request.user)
+                    serializer = DependentInfoSerializer(dependent, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except Patient.DoesNotExist:
+                    return Response({"message": "No dependent found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+            dependents = Dependent.objects.filter(patient__patient_username=request.user)
+            serializer = DependentInfoSerializer(dependents, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.method == 'PATCH':
+            if not request.query_params.get('id'):
+                return Response({"error": "Depend ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                dependent = Dependent.objects.get(id=request.query_params.get('id'), patient__patient_username=request.user)
+                serializer = DependentInfoSerializer(dependent, data=request.data, partial=True, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Patient.DoesNotExist:
+                return Response({"message": "No dependent found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['get'])
     def search(self, request):

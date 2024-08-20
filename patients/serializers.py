@@ -1,12 +1,15 @@
+import profile
+from attr import has
 from django.utils import timezone
 # import serializers
 from rest_framework import serializers
 from patients.models import (
-    Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
+    DependentProfilePicture, Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
     PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest,
-    DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment)
+    DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment
+    ,Dependent)
 from accounts.models import User
-from accounts.serializers import UserInfoSerializer
+from accounts.serializers import UserInfoSerializer, UserCreateSerializer
 from doctors.models import Doctor, DoctorAvailability
 from doctors.serializers import MinimumDoctorInfoSerializer, DoctorAvailabilitySerializer
 
@@ -38,48 +41,135 @@ class DependentsPaymentSerializer(serializers.ModelSerializer):
                 'created_at',
             ]
 
-class DependeeInfoSerializer(serializers.ModelSerializer):
-    age = serializers.SerializerMethodField(read_only=True)
+class DependentProfilePictureSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PatientDependentReport
+        model = DependentProfilePicture
         fields = [
             'id',
-            'dependent_names',
-            'dependent_relationship',
-            'dependent_bithdate',
-            'age',
-            'gender',
-            'dependent_blood_group',
-            # 'chronic_diseases',
-            'dependent_alergies',
-            'phone_number',
-            'email',
-            'address',
+            'profile_picture',
             'created_at',
         ]
 
-    def get_age(self, obj):
-        if obj.dependent_bithdate:
-            return  timezone.now().year - obj.dependent_bithdate.year
-        return None
+class DependentSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.FileField(write_only=True, required=False)
+    # patient as current login user
+    # patient = serializers.UUIDField(default=serializers.CurrentUserDefault())
+    location_as_mine = serializers.BooleanField(write_only=True, required=False)
+    class Meta:
+        model = Dependent
+        fields = [
+            'id',
+            # 'patient',
+            'full_name',
+            'profile_picture',
+            'relationship',
+            'age',
+            'gender',
+            'blood_group',
+            'alergies',
+            'location',
+            'location_as_mine',
+        ]
 
+    def create(self, validated_data):
+        patient = Patient.objects.get(patient_username__username=self.context['request'].user)
+        validated_data['patient'] = patient
+        location_as_mine = validated_data.pop('location_as_mine', False)
+        if location_as_mine:
+            validated_data['location'] = patient.location
+
+        profile_picture = validated_data.pop('profile_picture', None)
+        dependent = super().create(validated_data)
+        
+        if profile_picture:
+            DependentProfilePicture.objects.create(user=dependent, profile_picture=profile_picture)
+        else:
+            DependentProfilePicture.objects.create(user=dependent)
+
+        return dependent
+            
+            
+
+class DependentInfoSerializer(serializers.ModelSerializer):
+    profile_picture = DependentProfilePictureSerializer(
+        source="dependent_profile_picture", read_only=True)
+    class Meta:
+        model = Dependent
+        fields = [
+            'id',
+            'profile_picture',
+            'full_name',
+            'relationship',
+            'age',
+            'gender',
+            'blood_group',
+            'alergies',
+            # 'chronic_diseases',
+            'location',
+            'created_at'
+        ]
+
+    def update(self, instance, validated_data):
+        profile_picture = validated_data.pop('profile_picture', None)
+        if profile_picture:
+            instance.dependent_profile_picture.profile_picture = profile_picture
+            instance.dependent_profile_picture.save()
+        return super().update(instance, validated_data)
+
+class PatientRegistrationSerializer(UserCreateSerializer):
+    identity_number = serializers.CharField(write_only=True, required=True)
+    has_childrens = serializers.BooleanField(write_only=True, required=False)
+    has_family_members = serializers.BooleanField(write_only=True, required=False)
+    location = serializers.CharField(write_only=True, required=False)
+
+    def validate(self, attrs):
+        if attrs.get('gender') == 'male':
+            if attrs.get('is_pregnant'):
+                raise serializers.ValidationError("Sorry, You can't be pregnant as a man")
+        return super().validate(attrs)
+
+    class Meta(UserCreateSerializer.Meta):
+        fields = UserCreateSerializer.Meta.fields + [
+            'identity_number',
+            'has_childrens',
+            'has_family_members',
+            'location',
+        ]
+
+    def create(self, validated_data):
+        validated_data['user_type'] = User.PATIENT
+        patient_data = {
+            'identity_number': validated_data.pop('identity_number'),
+            'has_childrens': validated_data.pop('has_childrens', False),
+            'has_family_members': validated_data.pop('has_family_members', False),
+            'location': validated_data.pop('location', None),
+        }
+        user = super().create(validated_data)
+        instance = Patient.objects.create(patient_username=user, **patient_data)
+        return instance
+    
 
 class PatientInfoSerializer(serializers.ModelSerializer):
     personal_information = serializers.SerializerMethodField()
-    dependents_profile = DependeeInfoSerializer(
-        source="patient_dependents", many=True, read_only=True)
+    dependents_profile = DependentInfoSerializer(
+        source="dependents", many=True, read_only=True)
 
     class Meta:
         model = Patient
         fields = [
             'id',
             # 'patient_username',
+            "identity_number",
             'blood_group',
             'alergies',
             'chronic_diseases',
             'habits',
             'current_prescription',
+            "current_treatment",
             'is_pregnant',
+            "has_childrens",
+            "has_family_members",
+            "location",
             'created_at',
             'personal_information',
             'dependents_profile',
