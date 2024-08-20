@@ -1,5 +1,3 @@
-from datetime import datetime
-from pydoc import doc
 from django.utils import timezone
 
 from django.shortcuts import render

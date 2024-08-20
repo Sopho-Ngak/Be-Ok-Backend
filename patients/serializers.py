@@ -1,5 +1,3 @@
-import profile
-from attr import has
 from django.utils import timezone
 # import serializers
 from rest_framework import serializers
@@ -52,8 +50,6 @@ class DependentProfilePictureSerializer(serializers.ModelSerializer):
 
 class DependentSerializer(serializers.ModelSerializer):
     profile_picture = serializers.FileField(write_only=True, required=False)
-    # patient as current login user
-    # patient = serializers.UUIDField(default=serializers.CurrentUserDefault())
     location_as_mine = serializers.BooleanField(write_only=True, required=False)
     class Meta:
         model = Dependent
