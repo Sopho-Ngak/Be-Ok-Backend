@@ -3,6 +3,7 @@ from typing import Iterable, Optional
 import uuid
 import datetime
 # Django imports
+from attr import has
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -20,6 +21,10 @@ def prescribtion_form_upload_path(instance, filename):
 
 def lab_test_upload_path(instance, filename):
     return '/'.join(['lab_tests', str(instance.consultation.patient_username.patient_username), filename])
+
+def upload_path(instance, filename):
+    return '/'.join(['profile_pictures/dependents', str(instance.user.username), filename])
+
 
 
 AI_CONSULTATION = 'ai'
@@ -54,12 +59,17 @@ class Patient(models.Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient_username = models.OneToOneField(User, on_delete=models.CASCADE)
-    blood_group = models.CharField(choices=BLOOD_GROUP_CHOICES, default=BLOOD_GROUP_CHOICES[0][1],max_length=255, blank=True, null=True)
+    identity_number = models.CharField(max_length=50, blank=True, null=True)
+    blood_group = models.CharField(choices=BLOOD_GROUP_CHOICES, default=BLOOD_GROUP_CHOICES[0][1],max_length=10, blank=True, null=True)
     alergies = models.TextField( blank=True, null=True)
     chronic_diseases = models.TextField( blank=True, null=True)
     habits = models.TextField( blank=True, null=True)
     current_prescription = models.TextField( blank=True, null=True)
+    current_treatment = models.TextField( blank=True, null=True)
     is_pregnant = models.BooleanField(default=False)
+    has_childrens = models.BooleanField(default=False)
+    has_family_members = models.BooleanField(default=False)
+    location = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -74,6 +84,50 @@ class Patient(models.Model):
         ordering = ['-created_at']
 
 
+class Dependent(models.Model):
+    FRIEND = 'friend'
+    FAMILY = 'family'
+    CHILD = 'child'
+    SPOUSE = 'spouse'
+    OTHER = 'other'
+    RELATIONSHIP_CHOICES = (
+        (FRIEND, 'Friend'),
+        (FAMILY, 'Family'),
+        (CHILD, 'Child'),
+        (SPOUSE, 'Spouse'),
+        (OTHER, 'Other'),
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='dependents')
+    full_name = models.CharField(max_length=255)
+    relationship = models.CharField(choices=RELATIONSHIP_CHOICES, max_length=10)
+    # dependent_bithdate = models.DateField(blank=True, null=True)
+    age = models.IntegerField()
+    gender = models.CharField(choices=User.GENDER_CHOICES,max_length=10)
+    blood_group = models.CharField(choices=Patient.BLOOD_GROUP_CHOICES, default=Patient.BLOOD_GROUP_CHOICES[0][1],max_length=10, blank=True, null=True)
+    alergies = models.TextField( blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        return str(self.id)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class DependentProfilePicture(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(Dependent, on_delete=models.CASCADE, related_name='dependent_profile_picture')
+    profile_picture = models.ImageField(upload_to=upload_path, default='default/default_profile_picture.png')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.user)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
 
 class PatientReport(models.Model):
     

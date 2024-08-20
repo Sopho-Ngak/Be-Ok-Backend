@@ -51,7 +51,12 @@ class UserLogin(viewsets.ModelViewSet):
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
         # except Exception as e:
         #     return Response({'message': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
-    
+    from drf_spectacular.utils import extend_schema
+    @extend_schema(
+        request=None,
+        responses={204: CustomTokenObtainPairSerializer},
+        methods=["POST"]
+    )
     @action(detail=False, methods=['post'], url_path='logout')
     def user_logout(self, request):
         copy_user = request.user.username
@@ -103,24 +108,24 @@ class UserViewSet(viewsets.ModelViewSet):
         #     self.permission_classes = (AllowAny,)
         return super().get_permissions()
 
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            serializer.instance.set_password(serializer.validated_data['password'])
-            serializer.instance.save()
-            return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
+    # def create(self, request):
+    #     serializer = self.get_serializer(data=request.data, context={'request': request})
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         serializer.instance.set_password(serializer.validated_data['password'])
+    #         serializer.instance.save()
+    #         return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
         
-        # Custom error message to remove array from error message
-        error_data = {}
-        if serializer.errors.get('email'):
-            error_data['email'] = serializer.errors.get('email')[0]
-        if serializer.errors.get('phone_number'):
-            error_data['phone_number'] = serializer.errors.get('phone_number')[0]
-        if serializer.errors.get('username'):
-            error_data['username'] = serializer.errors.get('username')[0]
+    #     # Custom error message to remove array from error message
+    #     error_data = {}
+    #     if serializer.errors.get('email'):
+    #         error_data['email'] = serializer.errors.get('email')[0]
+    #     if serializer.errors.get('phone_number'):
+    #         error_data['phone_number'] = serializer.errors.get('phone_number')[0]
+    #     if serializer.errors.get('username'):
+    #         error_data['username'] = serializer.errors.get('username')[0]
             
-        return Response(error_data, status=status.HTTP_400_BAD_REQUEST)
+    #     return Response(error_data, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'], url_path='account-activation')
     def account_activation(self, request):

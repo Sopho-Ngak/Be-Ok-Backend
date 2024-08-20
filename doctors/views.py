@@ -1,4 +1,3 @@
-from datetime import datetime
 from django.utils import timezone
 
 from django.shortcuts import render
@@ -10,12 +9,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from yaml import serialize
 
 from .models import Doctor, DoctorDocument, DoctorAvailability
 from doctors.permissions import IsDoctor, IsDoctorAndProfileOwner
 from doctors.serializers import (
     DoctorDocumentSerializer, DoctorAvailabilitySerializer, DoctorInfoSerializer,
-    DoctorSerializer)
+    DoctorSerializer, DoctorRegistrationSerializer)
 from patients.models import Appointement, PatientReport, PatientDependentReport, Patient
 from patients.serializers import (DoctorAppointmentInfoSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   UpdateAppointmentSerializer)
@@ -43,6 +43,9 @@ class DoctorViewSet(viewsets.ModelViewSet):
                         return DoctorSerializer
             case 'doctor_documents':
                 return DoctorDocumentSerializer
+            
+            case 'register':
+                return DoctorRegistrationSerializer
             
             case 'doctor_availabilities' | 'available_doctors' | 'doctor_availabilities_by_date':
                 return DoctorAvailabilitySerializer
@@ -80,7 +83,21 @@ class DoctorViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated, ]
         elif self.action == 'doctor_availabilities_by_date':
             self.permission_classes = [IsAuthenticated, ]
+        elif self.action == 'register':
+            self.permission_classes = [AllowAny, ]
         return super().get_permissions()
+
+    @action(detail=False, methods=['post'], url_path='registration')
+    def register(self, request):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        serializer.instance.user.set_password(serializer.validated_data.get('password'))
+        serializer.instance.user.save()
+
+        doctor_serializer = DoctorInfoSerializer(serializer.instance, context={'request': request})
+        return Response(doctor_serializer.data, status=status.HTTP_201_CREATED)
+
     
     @action(detail=False, methods=['get'], url_path='search-doctor')
     def search_doctor(self, request):
