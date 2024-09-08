@@ -1,10 +1,14 @@
 from django.contrib import admin
 
-from patients.models import Patient, PatientReport, PatientDependentReport, Appointement, PatientPayment, DependentsPayment
+from patients.models import (Patient, PatientReport, PatientDependentReport, Appointement, PatientPayment, DependentsPayment,
+                             AiConsultationPatient, AIConsultationPatientSymptoms, AIConsultationPatientPrescription)
 # Register your models here.
 
 admin.site.register(PatientPayment)
 admin.site.register(DependentsPayment)
+admin.site.register(AiConsultationPatient)
+admin.site.register(AIConsultationPatientSymptoms)
+admin.site.register(AIConsultationPatientPrescription)
 
 
 @admin.register(Patient)
@@ -20,13 +24,13 @@ class PatientAdmin(admin.ModelAdmin):
 
 @admin.register(PatientReport)
 class PatientReportAdmin(admin.ModelAdmin):
-    list_display = ('patient_username', 'consulted_by_doctor', 'consultation_type', 'pain_area', 'created_at')
-    list_filter = ('consultation_type', 'created_at')
+    list_display = ('user', 'consulted_by_doctor', 'consultation_type', 'pain_area','is_paid','status', 'created_at')
+    list_filter = ('consultation_type','is_paid','status', 'created_at')
     search_fields = (
-        'patient_username__user__username', 
-        'patient_username__user__full_name', 
-        'patient_username__user__email', 
-        'patient_username__user__phone_number', 
+        'user__user__username', 
+        'user__user__full_name', 
+        'user__user__email', 
+        'user__user__phone_number', 
         'consulted_by_doctor__user__username', 
         'consulted_by_doctor__user__full_name', 
         'consulted_by_doctor__user__email', 

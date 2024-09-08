@@ -13,19 +13,20 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 # Local imports
 import patients
 from patients.models import (Patient, PatientReport, PatientDependentReport, Appointement, PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, 
-                             DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment, ONLINE, Dependent,
+                             DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment, ONLINE, Dependent,
                              DependentProfilePicture)
 from doctors.models import Doctor, DoctorAvailability
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
 from patients.permissions import IsPatient, IsDoctorOrPatient
-from patients.serializers import (PatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
+from patients.serializers import (PatientSerializer,AiConsultationPatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer, PatientPrescriptionFormSerializer,
                                   DependentsPrescriptionFormSerializer, PatientLabTestSerializer, DependentsLabTestSerializer, PatientRecommendationSerializer,
-                                  DependentsRecommendationSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer)
+                                  DependentsRecommendationSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer, AiConsultationInfoPatientSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
 from doctors.permissions import IsDoctor
+from patients.submodels.consultation_models import AiConsultationPatient
 from utils.ai_call import get_patient_result_from_ai
 from utils.payment_module import Payment
 from settings.models import BlackListedTransaction
@@ -47,7 +48,7 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'ai_consultation':
-            return PatientReportSerializer
+            return AiConsultationPatientSerializer
         elif self.action == 'get_patient_record':
             return PatientSerializer
 
@@ -374,7 +375,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             except Appointement.DoesNotExist:
                 return Response({"message": "No appointment found with this id provided bb"}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['post'], url_path='ai-consultation')
+    @action(detail=False, methods=['post', 'patch'], url_path='ai-consultation')
     def ai_consultation(self, request):
         choice = request.query_params.get('choice')
 
@@ -382,94 +383,131 @@ class PatientViewSet(viewsets.ModelViewSet):
         prescription_text = settings.PATIENT_CONSTANTS.messages.PRESCRIPTION_TEXT
         recommendation_text = settings.PATIENT_CONSTANTS.messages.RECOMMENDATION_TEXT
         recommended_tests_text = settings.PATIENT_CONSTANTS.messages.RECOMMENDED_TESTS_TEXT
+        doctor_ai = settings.PATIENT_CONSTANTS.messages.DOCTOR_AI_NAME
 
-        if request.data.get('pain_area'):
-            dianostic_text += f"Patient's pain area is {request.data.get('pain_area')}. \n"
-        else:
-            request.data['pain_area'] = 'Unknown'
+        pain_area = request.data.get('pain_area', 'Unknown')
+        dianostic_text += f"Patient's pain area is {pain_area}. \n" if pain_area != 'Unknown' else ''
 
         patient = Patient.objects.get(patient_username=request.user)
-        doctor, created = User.objects.get_or_create(
-            username="Dr Emile", user_type=User.DOCTOR)
+        doctor, _ = User.objects.get_or_create(
+            username=doctor_ai, user_type=User.DOCTOR)
         consultated_by = Doctor.objects.get(user=doctor)
 
-        if choice.lower() == 'myself':
+        if request.method == 'PATCH':
+            transaction_ref = request.query_params.get('transaction_ref')
+            consultation_id = request.query_params.get('consultation_id')
 
-            if not patient.blood_group == '--':
-                dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
-            elif patient.alergies:
-                prescription_text += f"Patient's alergies are {patient.alergies}. \n"
+            if not transaction_ref or not consultation_id:
+                return Response({"message": "'transaction_ref', 'consultation_id' is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if transaction is blacklisted
+            blacklisted_transaction = BlackListedTransaction.objects.filter(
+                reference_key=transaction_ref)
+            
+            if blacklisted_transaction.exists():
+                return Response({"message": "Invalid Transaction"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            payment: Payment = Payment()
+            response: dict = payment.find_transaction(transaction_ref)
+            
+            if response.get("status_code") == status.HTTP_200_OK:
+                try:
+                    consultation = AiConsultationPatient.objects.get(id=consultation_id)
+                    consultation.is_paid = True
+                    consultation.save()
+                    payment.blacklist_transaction(transaction_ref, **response)
+                    serializer = AiConsultationPatientSerializer(
+                        consultation, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except AiConsultationPatient.DoesNotExist:
+                    return Response({"message": "No consultation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
 
-            patient_result = get_patient_result_from_ai(
-                dianostic_text+request.data.get('symptoms'))
-            prescription_result = get_patient_result_from_ai(
-                prescription_text+request.data.get('symptoms'))
-            recommendation_result = get_patient_result_from_ai(
-                recommendation_text+request.data.get('symptoms'))
-            recommended_tests_result = get_patient_result_from_ai(
-                recommended_tests_text+request.data.get('symptoms'))
+            return Response({"message": "No transaction found with this reference provided"}, status=status.HTTP_404_NOT_FOUND)
+        
+        elif request.method == 'POST':
 
-            # patient_result = "Test 1, Test 2, Test 3"
-            # prescription_result = "Test 1, Test 2, Test 3"
-            # recommendation_result = "Test 1, Test 2, Test 3"
-            # recommended_tests_result = "Test 1, Test 2, Test 3"
+            if choice.lower() == 'me':
 
-            if patient_result:
-                request.data['results'] = patient_result
-                request.data['prescription'] = prescription_result
-                request.data['recommendation'] = recommendation_result
-                request.data['recommended_tests'] = recommended_tests_result
+                if not patient.blood_group == '--':
+                    dianostic_text += f"Patient's blood group is {patient.blood_group}. \n"
+                if patient.alergies:
+                    prescription_text += f"Patient's alergies are {patient.alergies}. \n"
 
-            serializer = self.get_serializer(
-                data=request.data, context={'request': request})
-            serializer.is_valid(raise_exception=True)
-            serializer.save(
-                consulted_by_doctor=consultated_by,
-                patient_username=Patient.objects.get(patient_username=request.user))
-            return Response({'id': serializer.data['id']}, status=status.HTTP_201_CREATED)
+                # patient_result = get_patient_result_from_ai(
+                #     dianostic_text+request.data.get('symptoms'))
+                # prescription_result = get_patient_result_from_ai(
+                #     prescription_text+request.data.get('symptoms'))
+                # recommendation_result = get_patient_result_from_ai(
+                #     recommendation_text+request.data.get('symptoms'))
+                # recommended_tests_result = get_patient_result_from_ai(
+                #     recommended_tests_text+request.data.get('symptoms'))
 
-        elif choice:
-            if request.data.get("dependent_blood_group") and request.data.get("dependent_alergies"):
-                dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')} and alergies are {request.data.get('dependent_alergies')}. \n"
-            elif request.data.get("dependent_blood_group"):
-                dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')}. \n"
-            elif request.data.get("dependent_alergies"):
-                prescription_text += f"Patient's alergies are {request.data.get('dependent_alergies')}. \n"
-            if request.data.get("dependent_age"):
-                prescription_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
+                patient_result = "Test 1, Test 2, Test 3"
+                prescription_result = [
+                    {'prescription': 'Paracetamol 500mg', 'frequence': 3, 'frequence_type': 'daily', 'duration': 5, 'dosage': 2},
+                    {'prescription': 'Omeprazole 20mg', 'frequence': 1, 'frequence_type': 'daily', 'duration': 10, 'dosage': 1},
+                    {'prescription': 'Ibuprofen 400mg', 'frequence': 2, 'frequence_type': 'daily', 'duration': 7, 'dosage': 1},
+                    {'prescription': 'Oral Rehydration Solution (ORS)', 'frequence': 2, 'frequence_type': 'daily', 'duration': 3, 'dosage': 1},
+                ]
+                recommendation_result = "Test 1, Test 2, Test 3"
+                recommended_tests_result = "Test 1, Test 2, Test 3"
 
-            dependent_result = get_patient_result_from_ai(
-                dianostic_text+request.data.get('dependent_symptoms'))
-            dependent_prescription_result = get_patient_result_from_ai(
-                prescription_text+request.data.get('dependent_symptoms'))
-            dependent_recommendation_result = get_patient_result_from_ai(
-                recommendation_text+request.data.get('dependent_symptoms'))
-            dependent_recommended_tests_result = get_patient_result_from_ai(
-                recommended_tests_text+request.data.get('dependent_symptoms'))
+                if patient_result:
+                    request.data['diagnosis'] = patient_result
+                    request.data['prescription'] = prescription_result
+                    request.data['recommendation'] = recommendation_result
+                    request.data['recommended_tests'] = recommended_tests_result
 
-            # dependent_result = "get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))"
-            # dependent_prescription_result = "et_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))"
-            # dependent_recommendation_result = "get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))"
-            # dependent_recommended_tests_result = "get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))"
+                serializer = self.get_serializer(
+                    data=request.data, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                serializer = AiConsultationInfoPatientSerializer(
+                    serializer.instance, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-            if dependent_result:
-                request.data['dependent_results'] = dependent_result
-                request.data['dependent_prescription'] = dependent_prescription_result
-                request.data['dependent_recommendation'] = dependent_recommendation_result
-                request.data['dependent_recommended_tests'] = dependent_recommended_tests_result
+            elif choice:
+                if request.data.get("dependent_blood_group") and request.data.get("dependent_alergies"):
+                    dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')} and alergies are {request.data.get('dependent_alergies')}. \n"
+                elif request.data.get("dependent_blood_group"):
+                    dianostic_text += f"Patient's blood group is {request.data.get('dependent_blood_group')}. \n"
+                elif request.data.get("dependent_alergies"):
+                    prescription_text += f"Patient's alergies are {request.data.get('dependent_alergies')}. \n"
+                if request.data.get("dependent_age"):
+                    prescription_text += f"Patient's age is {request.data.get('dependent_age')} years old. \n"
+
+                dependent_result = get_patient_result_from_ai(
+                    dianostic_text+request.data.get('dependent_symptoms'))
+                dependent_prescription_result = get_patient_result_from_ai(
+                    prescription_text+request.data.get('dependent_symptoms'))
+                dependent_recommendation_result = get_patient_result_from_ai(
+                    recommendation_text+request.data.get('dependent_symptoms'))
+                dependent_recommended_tests_result = get_patient_result_from_ai(
+                    recommended_tests_text+request.data.get('dependent_symptoms'))
+
+                # dependent_result = "get_patient_result_from_ai(dianostic_text+request.data.get('dependent_symptoms'))"
+                # dependent_prescription_result = "et_patient_result_from_ai(prescription_text+request.data.get('dependent_symptoms'))"
+                # dependent_recommendation_result = "get_patient_result_from_ai(recommendation_text+request.data.get('dependent_symptoms'))"
+                # dependent_recommended_tests_result = "get_patient_result_from_ai(recommended_tests_text+request.data.get('dependent_symptoms'))"
+
+                if dependent_result:
+                    request.data['dependent_results'] = dependent_result
+                    request.data['dependent_prescription'] = dependent_prescription_result
+                    request.data['dependent_recommendation'] = dependent_recommendation_result
+                    request.data['dependent_recommended_tests'] = dependent_recommended_tests_result
+                else:
+                    return Response({'message': settings.PATIENT_CONSTANTS.messages.AI_ERROR_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
+                serializer = PatientDependentReportSerializer(
+                    data=request.data, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save(
+                    consulted_by_doctor=consultated_by,
+                    patient_username=Patient.objects.get(patient_username=request.user))
+                return Response(
+                    {'id': serializer.data['id']}, status=status.HTTP_201_CREATED)
+
             else:
-                return Response({'message': settings.PATIENT_CONSTANTS.messages.AI_ERROR_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
-            serializer = PatientDependentReportSerializer(
-                data=request.data, context={'request': request})
-            serializer.is_valid(raise_exception=True)
-            serializer.save(
-                consulted_by_doctor=consultated_by,
-                patient_username=Patient.objects.get(patient_username=request.user))
-            return Response(
-                {'id': serializer.data['id']}, status=status.HTTP_201_CREATED)
-
-        else:
-            return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'message': 'Please select a choice'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'], url_path='paid-result')
     def get_paid_result(self, request):
@@ -666,7 +704,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         elif request.method == 'GET':
             if request.query_params.get('consultation_id'):
                 try:
-                    recommendations = PatientRecommendation.objects.filter(
+                    recommendations = PatientRecommendationForm.objects.filter(
                         consultation__id=request.query_params.get('consultation_id'))
                     serializer = self.get_serializer(
                         recommendations, many=True, context={'request': request})
@@ -674,7 +712,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 except PatientReport.DoesNotExist:
                     return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
 
-            recommendations = PatientRecommendation.objects.filter(
+            recommendations = PatientRecommendationForm.objects.filter(
                 consultation__patient_username__patient_username=request.user)
             serializer = self.get_serializer(
                 recommendations, many=True, context={'request': request})
@@ -684,14 +722,14 @@ class PatientViewSet(viewsets.ModelViewSet):
             if not request.query_params.get('recommendation_id'):
                 return Response({"message": "Please provide recommendation id"}, status=status.HTTP_400_BAD_REQUEST)
             try:
-                recommendation = PatientRecommendation.objects.get(
+                recommendation = PatientRecommendationForm.objects.get(
                     id=request.query_params.get('recommendation_id'))
                 serializer = self.get_serializer(
                     recommendation, data=request.data, partial=True)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
-            except PatientRecommendation.DoesNotExist:
+            except PatientRecommendationForm.DoesNotExist:
                 return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['post', 'get', 'patch'], url_path='d-recommendation')
@@ -738,6 +776,9 @@ class PatientViewSet(viewsets.ModelViewSet):
     def patient_payment(self, request):
 
         if request.method == 'PUT':
+            '''
+            Check the status of the ongoing transaction
+            '''
             # print(request.data)
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -771,6 +812,9 @@ class PatientViewSet(viewsets.ModelViewSet):
             return Response({'message': transaction}, status=status.HTTP_404_NOT_FOUND)
 
         if request.method == 'POST':
+            '''
+            Make payment
+            '''
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 

@@ -1,10 +1,9 @@
-from django.utils import timezone
 # import serializers
 from rest_framework import serializers
 from patients.models import (
     DependentProfilePicture, Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
-    PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest,
-    DependentsLabTest, PatientRecommendation, DependentsRecommendation, PatientPayment, DependentsPayment
+    PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, AiConsultationPatient,AIConsultationPatientSymptoms,
+    AIConsultationPatientPrescription, AiPatientDiagnosis, DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment
     ,Dependent)
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer, UserCreateSerializer
@@ -194,6 +193,150 @@ class MinumumPatientInfoSerializer(PatientInfoSerializer):
             'created_at',
         ]
 
+class AIConsultationPatientSymptomsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AIConsultationPatientSymptoms
+        fields = [
+            'id',
+            'symptoms',
+            'created_at'
+        ]
+
+class AIConsultationPatientPrescriptionSerializer(serializers.ModelSerializer):
+    
+        class Meta:
+            model = AIConsultationPatientPrescription
+            fields = [
+                'id',
+                'prescription',
+                'dosage', # how many pills per dose
+                'frequence', # how many times
+                'frequence_type', # daily, weekly, monthly, yearly
+                'duration', # how many days
+                'created_at'
+            ]
+
+class AiPatientDiagnosisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AiPatientDiagnosis
+        fields = [
+            'id',
+            'diagnosis',
+            'recommended_tests',
+            'recommendation',
+            'created_at'
+        ]
+
+class AiConsultationInfoPatientSerializer(serializers.ModelSerializer):
+    symptoms = AIConsultationPatientSymptomsSerializer(
+        source="ai_consultation_patient_symptoms", many=True, read_only=True)
+    prescription = AIConsultationPatientPrescriptionSerializer(
+        source="ai_consultation_patient_prescription", many=True, read_only=True)
+    diagnosis = AiPatientDiagnosisSerializer(
+        source="ai_patient_diagnosis", read_only=True)
+    # user = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        model = AiConsultationPatient
+        fields = [
+            'id',
+            'user',
+            'pain_area',
+            'illness_description',
+            'alergies',
+            'is_pregnant',
+            'pregnancy_days',
+            'adiction_habits',
+            'pain_duration',
+            'family_medical_history',
+            'previous_treatment',
+            'current_treatment',
+            'previous_illness',
+            'symptoms',
+            'diagnosis',
+            'prescription',
+            'is_paid',
+            'has_consulted_doctor',
+            'status',
+            'created_at',
+        ]
+class AiConsultationPatientSerializer(serializers.ModelSerializer):
+    symptoms = serializers.ListField(child=serializers.CharField(), write_only=True, required=True)
+    prescription = serializers.ListField(child=serializers.DictField(), required=True, write_only=True)
+    user = serializers.UUIDField(default=serializers.CurrentUserDefault())
+    diagnosis = serializers.CharField(write_only=True, required=True, max_length=None)
+    recommended_tests = serializers.CharField(write_only=True, required=True, max_length=None)
+    recommendation = serializers.CharField(write_only=True, required=True, max_length=None)
+
+    class Meta:
+        model = AiConsultationPatient
+        fields = [
+            'id',
+            'user',
+            'pain_area',
+            'symptoms',
+            'illness_description',
+            'alergies',
+            'adiction_habits',
+            'family_medical_history',
+            'pain_duration',
+            'is_pregnant',
+            'pregnancy_days',
+            'current_treatment',
+            'previous_treatment',
+            'previous_illness',
+            'diagnosis',
+            'prescription',
+            'recommended_tests',
+            'recommendation',
+            'is_paid',
+            'has_consulted_doctor',
+            'status',
+            'created_at',
+        ]
+
+    def create(self, validated_data: dict):
+
+        # replace "None" string with None
+        for key, value in validated_data.items():
+            if isinstance(value, str) and value.lower() == "none":
+                validated_data[key] = None
+
+        if not validated_data.get('symptoms') or not validated_data.get('prescription'):
+            raise serializers.ValidationError("Symptoms and prescription are required")
+        
+        # raise error if symptoms or prescription are not a list of dictionaries
+        if not isinstance(validated_data.get('symptoms'), list) \
+            or not isinstance(validated_data.get('prescription'), list)\
+                or not all(isinstance(item, dict) for item in validated_data.get('prescription')) \
+                    or not all(isinstance(item, str) for item in validated_data.get('symptoms')):
+            raise serializers.ValidationError("Symptoms and prescription must be a list of dictionaries")
+        
+        symptoms_date = validated_data.pop('symptoms')
+        prescription_data = validated_data.pop('prescription')
+        diagnosis = {
+            'diagnosis': validated_data.pop('diagnosis'),
+            'recommended_tests': validated_data.pop('recommended_tests'),
+            'recommendation': validated_data.pop('recommendation'),
+        }
+
+        try:
+            patient = Patient.objects.get(patient_username__username=self.context['request'].user)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Patient not found. The current user is not a patient")
+        
+        validated_data['user'] = patient
+        consultation = AiConsultationPatient.objects.create(**validated_data)
+    
+        # bulk create symptoms
+        symptoms = [AIConsultationPatientSymptoms(consultation=consultation, symptoms=item) for item in symptoms_date]
+        AIConsultationPatientSymptoms.objects.bulk_create(symptoms)
+        prescription = [AIConsultationPatientPrescription(consultation=consultation, **item) for item in prescription_data]
+        AIConsultationPatientPrescription.objects.bulk_create(prescription)
+        AiPatientDiagnosis.objects.create(consultation=consultation, **diagnosis)
+
+        return consultation
 
 
 class PatientReportSerializer(serializers.ModelSerializer):
@@ -205,7 +348,7 @@ class PatientReportSerializer(serializers.ModelSerializer):
         model = PatientReport
         fields = [
             'id',
-            'patient_username',
+            'user',
             'personal_information',
             'pain_area',
             'symptoms',
@@ -298,9 +441,15 @@ class PatientSerializer(serializers.ModelSerializer):
         return serializer.data
     
     def get_patient_previous_reports(self, obj):
-        paid_reports_instance = PatientReport.objects.filter(patient_username=obj, is_paid=True)
+        ai_consultation = AiConsultationPatient.objects.filter(user=obj, is_paid=True)
+        ai_serializer = AiConsultationInfoPatientSerializer(ai_consultation, many=True, context=self.context)
+        paid_reports_instance = PatientReport.objects.filter(user=obj, is_paid=True)
         serializer = PatientReportSerializer(paid_reports_instance, many=True, context=self.context)
-        return serializer.data
+        data = {
+            'ai_consultation': ai_serializer.data,
+            'doctor_consultation': serializer.data
+        }
+        return data
     
     def get_patient_dependents_repports(self, obj):
         paid_reports_instance = PatientDependentReport.objects.filter(patient_username=obj, is_paid=True)
@@ -657,7 +806,7 @@ class PatientRecommendationSerializer(serializers.ModelSerializer):
     consultation_details = serializers.SerializerMethodField()
 
     class Meta:
-        model = PatientRecommendation
+        model = PatientRecommendationForm
         fields = [
             'id',
             'consultation',
