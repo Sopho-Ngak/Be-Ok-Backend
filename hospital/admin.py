@@ -97,7 +97,7 @@ class HospitalAdmin(admin.ModelAdmin):
 
     def main_photo_shown(self, obj):
         if obj.main_photo:
-            return format_html('<img src="{}" max-width="100px" height="50" style="border:3px double #93BD68; padding:2px; margin:5px; border-radius:10px" />'.format(obj.image.url))
+            return format_html('<img src="{}" max-width="100px" height="50" style="border:3px double #93BD68; padding:2px; margin:5px; border-radius:10px" />'.format(obj.main_photo.url))
         else:
             return format_html('<img src="{}" max-width="100px" height="50" style="border:2px double #93BD68; padding:2px; margin:5px; border-radius:20px" />'.format("https://www.freeiconspng.com/uploads/no-image-icon-15.png"))
 
