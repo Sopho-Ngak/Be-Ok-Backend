@@ -11,6 +11,8 @@ from django.utils.html import format_html
 
 # Create your models here.
 def upload_path(instance, filename):
+    if isinstance(instance, Hospital):
+        return '/'.join(['hospital', instance.name, filename])
     return '/'.join(['hospital', str(instance.hospital.name), filename])
 
 days_choice = (
