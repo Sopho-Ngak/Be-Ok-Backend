@@ -26,7 +26,9 @@ DEBUG = env('DEBUG')
 ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://localhost:8000"
+    "https://localhost:8000",
+    "https://localhost:[0-9]*", # with arbitrary port number
+    "http://localhost:[0-9]*", # with arbitrary port number unencrypted
 ]
 
 class ObjDict(dict):
@@ -76,6 +78,8 @@ CUSTOM_APPS = [
 INSTALLED_APPS += CUSTOM_APPS
 
 MIDDLEWARE = [
+    # MiddlewareToCaptureRequestHeader
+    # 'utils.customer_middle_ware.MiddlewareToCaptureRequestHeader',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware', # corsheaders

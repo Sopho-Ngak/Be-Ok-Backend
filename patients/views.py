@@ -377,7 +377,7 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post', 'patch'], url_path='ai-consultation')
     def ai_consultation(self, request):
-        choice = request.query_params.get('choice')
+        choice: str = request.query_params.get('choice')
 
         dianostic_text = settings.PATIENT_CONSTANTS.messages.DIANOSTIC_TEXT
         prescription_text = settings.PATIENT_CONSTANTS.messages.PRESCRIPTION_TEXT
@@ -391,7 +391,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         patient = Patient.objects.get(patient_username=request.user)
         doctor, _ = User.objects.get_or_create(
             username=doctor_ai, user_type=User.DOCTOR)
-        consultated_by = Doctor.objects.get(user=doctor)
+        consultated_by, _ = Doctor.objects.get_or_create(user=doctor)
 
         if request.method == 'PATCH':
             transaction_ref = request.query_params.get('transaction_ref')

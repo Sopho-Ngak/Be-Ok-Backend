@@ -113,7 +113,7 @@ class Appointement(models.Model):
         return data
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['-start_date']
 
 
 class PatientPayment(models.Model):
