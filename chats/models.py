@@ -1,3 +1,4 @@
+from email.mime import image
 import uuid
 from django.db import models
 from doctors.models import Doctor
@@ -15,6 +16,8 @@ class Chat(models.Model):
         User, on_delete=models.CASCADE, related_name="message_receiver"
     )
     message_chat = models.TextField(null=False, blank=False)
+    image_message = models.ImageField(upload_to='images/', null=True, blank=True)
+    voice_note = models.FileField(upload_to='voices/', null=True, blank=True)
     display = models.BooleanField(default=True)
     read = models.BooleanField(default=False)
     created_on = models.DateTimeField(auto_now_add=True)
