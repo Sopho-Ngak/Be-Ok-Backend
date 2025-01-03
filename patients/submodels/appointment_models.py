@@ -79,7 +79,7 @@ class Appointement(models.Model):
     
     @property
     def day(self):
-        return  self.doctor_availability.day
+        return  self.doctor_availability.starting_date.day
     
     @property
     def payment(self):
@@ -113,7 +113,7 @@ class Appointement(models.Model):
         return data
 
     class Meta:
-        ordering = ['-start_date']
+        ordering = ['doctor_availability__starting_date']
 
 
 class PatientPayment(models.Model):
