@@ -51,6 +51,8 @@ class MessageSerializer(serializers.ModelSerializer):
     message = serializers.CharField(required=False)
     sender = serializers.HiddenField(default=serializers.CurrentUserDefault())
     receiver = serializers.CharField(required=True)
+    image_message = serializers.ImageField(required=False)
+    voice_note = serializers.FileField(required=False)
 
     class Meta:
         model = Message
@@ -101,7 +103,7 @@ class MessageSerializer(serializers.ModelSerializer):
                 Q(sender=validated_data['receiver'], receiver=validated_data['sender']) 
             )
         except Message.DoesNotExist:
-            print(validated_data)
+            # print(validated_data)
             previous_message = Message.objects.create(sender=validated_data['sender'], receiver=validated_data['receiver'])
             
         chat_instance = Chat.objects.create(
