@@ -13,7 +13,7 @@ class ChatSerializer(serializers.ModelSerializer):
     sender_info = serializers.SerializerMethodField()
     receiver_info = serializers.SerializerMethodField()
     sender= serializers.HiddenField(default=serializers.CurrentUserDefault())
-    message = serializers.CharField(required=False)
+    #message = serializers.CharField(required=False)
 
     class Meta:
         model = Chat
@@ -23,7 +23,8 @@ class ChatSerializer(serializers.ModelSerializer):
             'sender_info',
             'receiver_info',
             'message_chat',
-            'message',
+            'image_message',
+            'voice_note',
             'created_on',
         ]
         read_only_fields = ['receiver']
