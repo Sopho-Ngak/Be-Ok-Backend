@@ -15,7 +15,7 @@ from doctors.models import Doctor
 class AiConsultationPatient(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='ai_consultations')
-    pain_area = models.CharField(choices=PAIN_AREA_CHOICES, default=PAIN_AREA_CHOICES[11][1], max_length=255, blank=True, null=True)
+    pain_area = models.CharField(max_length=255)
     illness_description = models.TextField()
     alergies = models.TextField(blank=True, null=True)
     is_pregnant = models.BooleanField(default=False)
@@ -158,7 +158,7 @@ class PatientReport(models.Model):
     illness_description = models.TextField()
     consulted_by_doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='patient_consultated_by')
     consultation_type = models.CharField(choices=CONSULTATION_TYPE, default=CONSULTATION_TYPE[0][0], max_length=255, blank=True, null=True)
-    pain_area = models.CharField(choices=PAIN_AREA_CHOICES, default=PAIN_AREA_CHOICES[11][1], max_length=255, blank=True, null=True)
+    pain_area = models.CharField(max_length=255)
     results = models.TextField()
     # prescription = models.TextField(blank=True, null=True)
     recommended_tests = models.TextField(blank=True, null=True)

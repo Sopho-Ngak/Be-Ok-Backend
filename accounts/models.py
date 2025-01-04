@@ -147,6 +147,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class VerificationCode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     email = models.EmailField(max_length=255, blank=True, null=True)
     code = models.CharField(max_length=4, unique=True)

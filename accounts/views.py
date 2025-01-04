@@ -43,6 +43,10 @@ class UserLogin(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
     
+    @action(detail=False, methods=['post'], url_path='google-login')
+    def google_login(self, request):
+        pass
+    
     @action(detail=False, methods=['post'], url_path='refresh-token')
     def refresh_token(self, request):
         # try:
