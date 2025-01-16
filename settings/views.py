@@ -1,9 +1,10 @@
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from patients.permissions import IsPatient
+from patients.submodels.consultation_payments import PatientAiPayment
 
 
 from settings.models import DiseaseCategorie, RatingDoctor
@@ -15,6 +16,20 @@ def get_disease_groups(request):
     disease_groups = DiseaseCategorie.objects.all()
     serializer = DiseaseCategorieSerializer(disease_groups, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny,])
+def paypack_webhook(request):
+    data: dict = request.data
+    try:
+        payment = PatientAiPayment.objects.get(transaction_ref=data['transaction_ref'])
+        payment.proceed = True
+        payment.save()
+        return Response({'message': 'Payment successful'}, status=status.HTTP_200_OK)
+    except PatientAiPayment.DoesNotExist:
+        return Response({'message': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 class RatingViewSets(viewsets.ModelViewSet):
