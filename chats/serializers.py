@@ -88,7 +88,12 @@ class MessageSerializer(serializers.ModelSerializer):
             raise ValidationError("You can't send message to yourself")
         return attrs
     
-    def create(self, validated_data: dict):        
+    def create(self, validated_data: dict):
+
+        if not validated_data.get('message') \
+            and not validated_data.get('image_message') \
+                and not validated_data.get('voice_note'):
+                raise ValidationError("You can not send empty message")
 
         try:
             receiver = User.objects.get(id=validated_data['receiver'])
