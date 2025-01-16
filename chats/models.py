@@ -6,6 +6,9 @@ from patients.models import Patient
 from accounts.models import User
 from django.utils.translation import gettext_lazy as _
 
+def chat_upload_path(instance, filename):
+    return '/'.join(['chats', f"sender-{instance.sender.username}/receiver-{instance.receiver.username}", filename])
+
 
 class Chat(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -15,9 +18,9 @@ class Chat(models.Model):
     receiver = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="message_receiver"
     )
-    message_chat = models.TextField(null=False, blank=False)
-    image_message = models.ImageField(upload_to='images/', null=True, blank=True)
-    voice_note = models.FileField(upload_to='voices/', null=True, blank=True)
+    message_chat = models.TextField(null=True, blank=True)
+    image_message = models.ImageField(upload_to=chat_upload_path, null=True, blank=True)
+    voice_note = models.FileField(upload_to=chat_upload_path, null=True, blank=True)
     display = models.BooleanField(default=True)
     read = models.BooleanField(default=False)
     created_on = models.DateTimeField(auto_now_add=True)

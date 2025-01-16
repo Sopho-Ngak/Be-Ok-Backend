@@ -88,9 +88,7 @@ class MessageSerializer(serializers.ModelSerializer):
             raise ValidationError("You can't send message to yourself")
         return attrs
     
-    def create(self, validated_data: dict):
-        message_text = validated_data.pop('message')
-        
+    def create(self, validated_data: dict):        
 
         try:
             receiver = User.objects.get(id=validated_data['receiver'])
@@ -110,7 +108,7 @@ class MessageSerializer(serializers.ModelSerializer):
         chat_instance = Chat.objects.create(
             sender=self.context['request'].user,
             receiver=validated_data['receiver'],
-            message_chat=message_text,
+            message_chat=validated_data.get('message'),
             image_message=validated_data.get('image_message'),
             voice_note=validated_data.get('voice_note'),
         )
