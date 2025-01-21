@@ -28,10 +28,10 @@ def create_user_profile(sender, instance: User, created: bool, **kwargs):
         ProfilePicture.objects.get_or_create(user=instance)
 
         if user_type == User.DOCTOR:
-            doctor_instance = Doctor.objects.create(user=instance)
-            DoctorDocument.objects.create(doctor=doctor_instance)
+            doctor_instance = Doctor.objects.get_or_create(user=instance)
+            DoctorDocument.objects.get_or_create(doctor=doctor_instance)
         elif user_type == User.PATIENT:
-            Patient.objects.create(patient_username=instance)
+            Patient.objects.get_or_create(patient_username=instance)
         user_code: VerificationCode = VerificationCode.objects.create(user=instance, email=instance.email, code=get_random_code(code_len=4))
         send_activation_code_via_email(user_code.id)
     

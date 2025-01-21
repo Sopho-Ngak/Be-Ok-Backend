@@ -5,6 +5,7 @@ from doctors.models import Doctor
 from patients.models import Patient
 from accounts.models import User
 from django.utils.translation import gettext_lazy as _
+from cloudinary.models import CloudinaryField
 
 def chat_upload_path(instance, filename):
     return '/'.join(['chats', f"sender-{instance.sender.username}/receiver-{instance.receiver.username}", filename])
@@ -20,7 +21,7 @@ class Chat(models.Model):
     )
     message_chat = models.TextField(null=True, blank=True)
     image_message = models.ImageField(upload_to=chat_upload_path, null=True, blank=True)
-    voice_note = models.FileField(upload_to=chat_upload_path, null=True, blank=True)
+    voice_note = CloudinaryField('media', resource_type='video', null=True, blank=True)
     display = models.BooleanField(default=True)
     read = models.BooleanField(default=False)
     created_on = models.DateTimeField(auto_now_add=True)
