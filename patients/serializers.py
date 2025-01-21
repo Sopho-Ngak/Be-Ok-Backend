@@ -140,7 +140,10 @@ class PatientRegistrationSerializer(UserCreateSerializer):
             'location': validated_data.pop('location', None),
         }
         user = super().create(validated_data)
-        instance = Patient.objects.create(patient_username=user, **patient_data)
+        try:
+            instance = Patient.objects.get(patient_username=user)
+        except Patient.DoesNotExist:
+            instance = Patient.objects.create(patient_username=user, **patient_data)
         return instance
     
 
