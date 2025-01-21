@@ -49,8 +49,11 @@ class DoctorRegistrationSerializer(UserCreateSerializer):
         }
 
         user = super().create(validated_data)
-        doctor = Doctor.objects.create(user=user, **doctor_data)
-        DoctorDocument.objects.create(doctor=doctor, **document_date)
+        try:
+            doctor = Doctor.objects.get(user=user)
+        except Doctor.DoesNotExist:
+            doctor = Doctor.objects.create(user=user, **doctor_data)
+            DoctorDocument.objects.create(doctor=doctor, **document_date)
 
         return doctor
 
