@@ -2,7 +2,7 @@ from typing import Any
 from django.contrib import admin
 from django.http import HttpRequest
 from django.utils.html import format_html
-from django.forms import TypedChoiceField
+from django.forms import ModelForm, TypedChoiceField
 
 from hospital.models import Hospital, OpeningHours, Galery, Service, days_choice
 # Register your models here.
@@ -52,9 +52,12 @@ class GaleryInline(admin.TabularInline):
     readonly_fields = ('image_shown','created_at', 'updated_at')
     fields = ('image','image_shown', 'created_at', 'updated_at')
 
-    def image_shown(self, obj):
+    def image_shown(self, obj: Galery):
         if obj.image:
-            return format_html('<img src="{}" max-width="200px" height="20%" style="border:3px double #93BD68; padding:2px; margin:5px; border-radius:10px" />'.format(obj.image.url))
+            return format_html(
+                    '<a href="{0}" target="_blank"><img src="{0}" style="display: block; width: 100%; height: auto; margin: 20px auto; border:3px double #93BD68; padding:2px; border-radius:10px; cursor: pointer;" /></a>',
+                    obj.image.url
+                )
         else:
             return format_html('<img src="{}" max-width="200px" height="20%" style="border:2px double #93BD68; padding:2px; margin:5px; border-radius:20px" />'.format("https://www.freeiconspng.com/uploads/no-image-icon-15.png"))
 
@@ -63,8 +66,8 @@ class GaleryInline(admin.TabularInline):
 
 @admin.register(Hospital)
 class HospitalAdmin(admin.ModelAdmin):
-    list_display = ('name', 'address', 'city', 'state', 'country', 'phone', 'email', 'created_at', 'updated_at', 'main_photo_shown')
-    list_filter = ('city', 'state', 'country', 'created_at', 'updated_at')
+    list_display = ('name','type', 'address', 'email', 'created_at', 'photo')
+    list_filter = ('city', 'type', 'country', 'created_at', 'updated_at')
     search_fields = ('name', 'address', 'city', 'state', 'country', 'phone', 'email', 'website')
     inlines = [ServiceInLine, OpeningHoursInline, GaleryInline,]
     fieldsets = (
@@ -80,7 +83,7 @@ class HospitalAdmin(admin.ModelAdmin):
                 'phone',
                 'email',
                 'website',
-                'main_photo_shown'
+                'main_picture'
             )
         }),
         (
@@ -93,11 +96,32 @@ class HospitalAdmin(admin.ModelAdmin):
             }
         ),
     )
-    readonly_fields = ('created_at', 'updated_at', 'main_photo_shown')
+    readonly_fields = ('created_at', 'updated_at', 'photo', 'main_picture')
 
-    def main_photo_shown(self, obj):
+    def photo(self, obj: Hospital):
         if obj.main_photo:
-            return format_html('<img src="{}" max-width="100px" height="50" style="border:3px double #93BD68; padding:2px; margin:5px; border-radius:10px" />'.format(obj.main_photo.url))
+            return format_html('<img src="{}" width="100px" height="50" style="border:3px double #93BD68; padding:2px; margin:5px; border-radius:10px" />'.format(obj.main_photo.url))
         else:
             return format_html('<img src="{}" max-width="100px" height="50" style="border:2px double #93BD68; padding:2px; margin:5px; border-radius:20px" />'.format("https://www.freeiconspng.com/uploads/no-image-icon-15.png"))
+        
+    def main_picture(self, obj: Hospital):
+        
+        if obj.main_photo:
+            return format_html(
+                '<a href="{0}" target="_blank"><img src="{0}" style="display: block; width: 100%; height: auto; margin: 20px auto; border:3px double #93BD68; padding:2px; border-radius:10px; cursor: pointer;" /></a>',
+                obj.main_photo.url
+            )
+        else:
+            return format_html(
+                '<img src="https://www.freeiconspng.com/uploads/no-image-icon-15.png" style="width: 100%; height: auto; margin: 20px auto; border:2px double #93BD68; padding:2px; border-radius:20px;" />'
+            )
+        
+    # def save_model(self, request: HttpRequest, obj: Hospital, form: ModelForm, change: bool) -> None:
+    #     # if not photo name is too long show error message to user and return
+    #     self.message_user(request, "The name of the photo is too long, please rename the photo and try again", level='ERROR')
+    #     if obj.main_photo:
+    #         if len(obj.main_photo.name) > 100:
+    #             self.message_user(request, "The name of the photo is too long, please rename the photo and try again", level='ERROR')
+                
+    #     return super().save_model(request, obj, form, change)
 

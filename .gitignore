@@ -30,3 +30,5 @@ postgres_data
 # IDE
 .idea/
 .vscode
+
+db.json

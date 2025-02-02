@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import environ
 from datetime import timedelta
-import dj_database_url
+# import dj_database_url
 from django.utils.module_loading import import_string
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -62,8 +62,9 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'rest_framework',
     'rest_framework_simplejwt',
-    'cloudinary_storage',
-    'cloudinary',
+    # 'cloudinary_storage',
+    # 'cloudinary',
+    'storages',
 ]
 
 CUSTOM_APPS = [
@@ -238,6 +239,37 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
+USE_S3  = env('USE_S3') == 'True'
+if USE_S3 :
+    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME')
+    AWS_S3_SIGNATURE_NAME = env('AWS_S3_SIGNATURE_NAME')
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
+    AWS_S3_VERIFY = True
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+        'ACL': 'public-read',
+    }
+    STORAGES = {
+        'default': {
+            "BACKEND": "storages.backends.s3.S3Storage",
+
+        },
+        "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "LOCATION": "static",
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': env("CLOUDINARY_CLOUD_NAME"),
     'API_KEY': env("CLOUDINARY_API_KEY"),
@@ -250,9 +282,9 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static')
 ]
 
-MEDIA_URL = '/media/'
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# MEDIA_URL = '/media/'
+# # MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 FIXTURE_DIRS = (
     os.path.join(BASE_DIR, 'fixtures'),

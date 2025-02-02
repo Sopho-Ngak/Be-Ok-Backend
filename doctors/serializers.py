@@ -34,7 +34,7 @@ class DoctorRegistrationSerializer(UserCreateSerializer):
             'document',
         ]
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict):
         validated_data['user_type'] = User.DOCTOR
         doctor_data = {
             'physical_consultation': validated_data.pop('physical_consultation', False),

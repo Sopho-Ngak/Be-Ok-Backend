@@ -28,7 +28,7 @@ def create_user_profile(sender, instance: User, created: bool, **kwargs):
         ProfilePicture.objects.get_or_create(user=instance)
 
         if user_type == User.DOCTOR:
-            doctor_instance = Doctor.objects.get_or_create(user=instance)
+            doctor_instance, _ = Doctor.objects.get_or_create(user=instance)
             DoctorDocument.objects.get_or_create(doctor=doctor_instance)
         elif user_type == User.PATIENT:
             Patient.objects.get_or_create(patient_username=instance)

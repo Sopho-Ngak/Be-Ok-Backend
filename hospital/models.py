@@ -39,7 +39,7 @@ class Hospital(models.Model):
     type = models.CharField(max_length=100, choices=TYPE, default=TYPE[0][0])
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=100)
-    main_photo = models.ImageField(upload_to=upload_path, blank=True, null=True)
+    main_photo = models.ImageField(upload_to=upload_path, blank=True, null=True, max_length=1000)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100)
