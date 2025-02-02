@@ -501,7 +501,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                     data=request.data, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 serializer.save(
-                    consulted_by_doctor=consultated_by,
+                    consulted_by_doctor=doctor_ai,
                     patient_username=Patient.objects.get(patient_username=request.user))
                 return Response(
                     {'id': serializer.data['id']}, status=status.HTTP_201_CREATED)
