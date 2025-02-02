@@ -389,9 +389,9 @@ class PatientViewSet(viewsets.ModelViewSet):
         dianostic_text += f"Patient's pain area is {pain_area}. \n" if pain_area != 'Unknown' else ''
 
         patient = Patient.objects.get(patient_username=request.user)
-        doctor, created = User.objects.get_or_create(
+        user, created = User.objects.get_or_create(
             username=doctor_ai, user_type=User.DOCTOR)
-        consultated_by = Doctor.objects.get(user=doctor)
+        doctor_ai = Doctor.objects.get(user=user)
 
         if request.method == 'PATCH':
             transaction_ref = request.query_params.get('transaction_ref')

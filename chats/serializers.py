@@ -25,6 +25,7 @@ class ChatSerializer(serializers.ModelSerializer):
             'message_chat',
             'image_message',
             'voice_note',
+            'video',
             'created_on',
         ]
         read_only_fields = ['receiver']
@@ -54,6 +55,7 @@ class MessageSerializer(serializers.ModelSerializer):
     receiver = serializers.CharField(required=True)
     image_message = serializers.ImageField(required=False)
     voice_note = serializers.FileField(required=False)
+    video = serializers.FileField(required=False)
 
     class Meta:
         model = Message
@@ -66,24 +68,25 @@ class MessageSerializer(serializers.ModelSerializer):
             'message',
             'image_message',
             'voice_note',
+            'video',
             'chats',
             'created_on',
         ]
         read_only_fields = ['sender', 'receiver']
 
-    def get_sender_info(self, obj):
+    def get_sender_info(self, obj: Message):
         # user = User.objects.get(id=obj.sender.id)
         # print("################",user)
         return UserInfoSerializer(obj.sender, context=self.context).data
     
-    def get_receiver_info(self, obj):
+    def get_receiver_info(self, obj: Message):
         # user = User.objects.get(id=obj.receiver.id)
         return UserInfoSerializer(obj.receiver, context=self.context).data
     
-    def get_chats(self, obj):
+    def get_chats(self, obj: Message):
         return ChatSerializer(obj.chats.all(), many=True, context=self.context).data
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict):
         if attrs['sender'] == attrs['receiver']:
             raise ValidationError("You can't send message to yourself")
         return attrs
@@ -92,7 +95,8 @@ class MessageSerializer(serializers.ModelSerializer):
 
         if not validated_data.get('message') \
             and not validated_data.get('image_message') \
-                and not validated_data.get('voice_note'):
+                and not validated_data.get('voice_note') \
+                    and not validated_data.get('video'):
                 raise ValidationError("You can not send empty message")
 
         try:
@@ -116,6 +120,7 @@ class MessageSerializer(serializers.ModelSerializer):
             message_chat=validated_data.get('message'),
             image_message=validated_data.get('image_message'),
             voice_note=validated_data.get('voice_note'),
+            video=validated_data.get('video'),
         )
         previous_message.chats.add(chat_instance)
         return previous_message
