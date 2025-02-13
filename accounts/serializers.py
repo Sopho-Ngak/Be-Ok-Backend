@@ -1,3 +1,4 @@
+from random import choice
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 from rest_framework import serializers
 from django.utils import timezone
@@ -35,6 +36,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['address'] = user.address
         token['user_type'] = user.user_type
         return token
+    
+class GoogleLoginSerializer(serializers.Serializer):
+    google_id_token = serializers.CharField(write_only=True)
+    user_type = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, attrs):
+        if attrs.get('user_type') not in ['patient', 'doctor']:
+            raise serializers.ValidationError("Invalid user type. choce from ['patient', 'doctor']")
+        return attrs
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     pass
