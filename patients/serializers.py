@@ -1,10 +1,13 @@
+from django.utils import timezone
+from django.db.models import Q
+
 # import serializers
 from rest_framework import serializers
 from patients.models import (
     DependentProfilePicture, Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
     PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, AiConsultationPatient,AIConsultationPatientSymptoms,
     AIConsultationPatientPrescription, AiPatientDiagnosis, DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment
-    ,Dependent)
+    ,Dependent, WorkoutRoutine, Treatment, TreatmentTracker, TreatmentFeedBack, TreatmentCalendar)
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer, UserCreateSerializer
 from doctors.models import Doctor, DoctorAvailability
@@ -352,13 +355,14 @@ class PatientReportSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'user',
+            'patient_username',
             'personal_information',
             'pain_area',
             'symptoms',
             'consulted_by_doctor',
             'consultation_type',
             'results',
-            'prescription',
+            # 'prescription',
             'recommended_tests',
             'recommendation',
             'medical_form',
@@ -370,13 +374,198 @@ class PatientReportSerializer(serializers.ModelSerializer):
     def get_personal_information(self, obj):
         user = User.objects.get(username=obj)
         profile_serializer = UserInfoSerializer(user, context=self.context)
-        medical_serializer = PatientEditProfileSerializer(obj.patient_username, context=self.context)
+        medical_serializer = PatientEditProfileSerializer(obj.user, context=self.context)
         data = {
             "profile": profile_serializer.data,
             "medical": medical_serializer.data
         }
 
         return data
+    
+
+class WorkoutRoutineSerializer(serializers.ModelSerializer):
+    routine_overview = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WorkoutRoutine
+        fields = [
+            'id',
+            'icon',
+            'routine',
+            'start_date',
+            'end_date',
+            'created_at',
+            'routine_overview',
+        ]
+
+    def get_routine_overview(self, obj: WorkoutRoutine):
+        if obj.total_days >=7 :
+            total_days = f"{obj.total_days //7} weeks"
+        else:
+            total_days = f"{obj.total_days} days"
+
+        return {
+            "ongoing": obj.on_going,
+            "days_used": obj.days_used,
+            "total_days_number": obj.total_days,
+            "total_days": total_days,
+            "days_remaining": obj.days_remaining,
+            "status": "completed" if obj.end_date < timezone.now().date() else "ongoing"
+        }
+
+class TreatmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Treatment
+        fields = [
+            'id',
+            'medication',
+            'is_active',
+            'write_datetime',
+            'created_at',
+        ]
+
+class TreatmentTrackerSerializer(serializers.ModelSerializer):
+    medications = serializers.SerializerMethodField()
+    # taking an array of medications
+    medication = serializers.ListField(
+        child=serializers.CharField(), write_only=True, required=False)
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = TreatmentTracker
+        fields = [
+            'id',
+            'patient',
+            'medications',
+            'medication',
+            'created_at',
+        ]
+
+    def get_medications(self, obj: TreatmentTracker):
+        serializer = TreatmentSerializer(obj.medications.all(), many=True)
+        return serializer.data
+
+    def create(self, validated_data: dict):
+        try:
+            patient = Patient.objects.get(patient_username__username=self.context['request'].user)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Current user is not not a patient")
+
+        instance, _ = TreatmentTracker.objects.get_or_create(patient=patient)
+
+        medications = [Treatment(medication=item) for item in validated_data['medication']]
+        Treatment.objects.bulk_create(medications)
+        new_medications_instance = [
+            Treatment.objects.get(medication=item, created_at__gte=(timezone.now() - timezone.timedelta(seconds=10))) for item in validated_data['medication']
+        ]
+
+        instance.medications.add(*new_medications_instance)
+
+        return instance
+    
+
+class TreatmentCalendarSerializer(serializers.ModelSerializer):
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = TreatmentCalendar
+        fields = [
+            'id',
+            'patient',
+            'date',
+            'has_taken',
+            'created_at',
+        ]
+    
+    def create(self, validated_data):
+        try:
+            patient = Patient.objects.get(patient_username__username=self.context['request'].user)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Current user is not not a patient")
+        
+        # get all active medications of patient
+
+        medication = TreatmentTracker.objects.get(
+            patient=patient).medications.filter(is_active=True)
+        
+        calendar_instance = TreatmentCalendar.objects.create(
+            patient=patient, date=validated_data['date'])
+        
+        calendar_instance.treatment.set(medication)
+
+        return calendar_instance
+
+class TreatmentFeedBackSerializer(serializers.ModelSerializer):
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    medications = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TreatmentFeedBack
+        fields = [
+            'id',
+            'patient',
+            'feedback',
+            'medications',
+            'created_at',
+        ]
+
+    def get_medications(self, obj: TreatmentFeedBack):
+        serializer = TreatmentSerializer(obj.medications.all(), many=True)
+        return serializer.data
+    
+    def create(self, validated_data):
+        try:
+            patient = Patient.objects.get(patient_username__username=self.context['request'].user)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Current user is not not a patient")
+        
+        # get all active medications of patient
+
+        medication = TreatmentTracker.objects.get(
+            patient=patient).medications.filter(is_active=True)
+        
+        feadback_instance = TreatmentFeedBack.objects.create(
+            patient=patient, feedback=validated_data.get('feedback'))
+        
+        feadback_instance.medications.set(medication)
+
+        return feadback_instance
+
+class GeneralHealgthViewSerialize(serializers.ModelSerializer):
+    workout_routines = WorkoutRoutineSerializer(
+        source="workout_routine", many=True, read_only=True)
+    treatments = TreatmentTrackerSerializer(
+        source="treatment_tracker", read_only=True)
+    my_doctors = serializers.SerializerMethodField()
+    treatments_calendar = TreatmentCalendarSerializer(
+        source="patient_treatment_calendar", many=True, read_only=True)
+    class Meta:
+        model = Patient
+        fields = [
+            'id',
+            'weight',
+            'chronic_diseases',
+            'habits',
+            'current_prescription',
+            'is_pregnant',
+            # 'has_childrens',
+            # 'has_family_members',
+            # 'location',
+            'created_at',
+            'treatments',
+            'treatments_calendar',
+            'workout_routines',
+            'my_doctors',
+        ]
+
+    def get_my_doctors(self, obj: Patient):
+        doctors = Doctor.objects.filter(
+                    Q(doctor_documents__is_approved=True,
+                    patient_consultated_by__user__patient_username=self.context['request'].user) |
+                    Q(doctor_documents__is_approved=True,
+                      dependent_consultated_by__patient_username__patient_username=self.context['request'].user))
+        serializer = MinimumDoctorInfoSerializer(doctors, many=True, context=self.context)
+        return serializer.data
 
 
 
