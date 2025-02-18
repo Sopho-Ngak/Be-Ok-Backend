@@ -1,7 +1,8 @@
 from django.contrib import admin
 
 from patients.models import (Patient, PatientReport, PatientDependentReport, Appointement, PatientPayment, DependentsPayment,
-                             AiConsultationPatient, AIConsultationPatientSymptoms, AIConsultationPatientPrescription)
+                             AiConsultationPatient, AIConsultationPatientSymptoms, AIConsultationPatientPrescription, WorkoutRoutine,
+                             TreatmentFeedBack)
 # Register your models here.
 
 admin.site.register(PatientPayment)
@@ -10,6 +11,16 @@ admin.site.register(AiConsultationPatient)
 admin.site.register(AIConsultationPatientSymptoms)
 admin.site.register(AIConsultationPatientPrescription)
 
+
+@admin.register(TreatmentFeedBack)
+class TreatmentFeedBackAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'feedback', 'created_at')
+    list_filter = ('created_at',)
+
+@admin.register(WorkoutRoutine)
+class WorkoutRoutineAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'routine')
+    # list_filter = ( 'is_paid','status','state',)
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):

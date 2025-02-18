@@ -2,6 +2,8 @@
 
 # Django imports
 from django.conf import settings
+from django.db.models import Q
+from django.utils import timezone
 
 # Third party imports
 from rest_framework import viewsets, status
@@ -14,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 import patients
 from patients.models import (Patient, PatientReport, PatientDependentReport, Appointement, PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, 
                              DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment, ONLINE, Dependent,
-                             DependentProfilePicture)
+                             DependentProfilePicture, WorkoutRoutine, TreatmentTracker, TreatmentCalendar)
 from doctors.models import Doctor, DoctorAvailability
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer
@@ -22,7 +24,8 @@ from patients.permissions import IsPatient, IsDoctorOrPatient
 from patients.serializers import (PatientSerializer,AiConsultationPatientSerializer, PatientInfoSerializer, PatientEditProfileSerializer, PatientReportSerializer, PatientDependentReportSerializer,
                                   PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer, PatientPrescriptionFormSerializer,
                                   DependentsPrescriptionFormSerializer, PatientLabTestSerializer, DependentsLabTestSerializer, PatientRecommendationSerializer,
-                                  DependentsRecommendationSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer, AiConsultationInfoPatientSerializer)
+                                  DependentsRecommendationSerializer, TreatmentTrackerSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer, AiConsultationInfoPatientSerializer,
+                                  GeneralHealgthViewSerialize, WorkoutRoutineSerializer, TreatmentFeedBackSerializer, TreatmentCalendarSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
 from doctors.permissions import IsDoctor
@@ -157,7 +160,26 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='doctors')
     def get_all_doctors(self, request):
         if request.method == 'GET':
-            doctors = Doctor.objects.filter(doctor_documents__is_approved=True)
+            choice: str = request.query_params.get('choice')
+            doctor_id = request.query_params.get('doctor_id')
+            if choice and choice.lower() == 'my_doctors' and not doctor_id:
+                doctors = Doctor.objects.filter(
+                    Q(doctor_documents__is_approved=True,
+                    patient_consultated_by__user__patient_username=request.user) |
+                    Q(doctor_documents__is_approved=True,
+                      dependent_consultated_by__patient_username__patient_username=request.user)
+                )
+            elif doctor_id and choice and choice.lower() == 'my_doctors':
+                patient_reports = PatientReport.objects.filter(consulted_by_doctor__id=doctor_id)
+                dependent_reports = PatientDependentReport.objects.filter(consulted_by_doctor__id=doctor_id)
+                data = {
+                    'patient_reports': PatientReportSerializer(patient_reports, many=True, context={'request': request}).data,
+                    'dependent_reports': PatientDependentReportSerializer(dependent_reports, many=True, context={'request': request}).data
+                }
+                return Response(data, status=status.HTTP_200_OK)
+            else:
+                doctors = Doctor.objects.filter(doctor_documents__is_approved=True)
+
             serializer = DoctorInfoSerializer(
                 doctors, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -186,6 +208,157 @@ class PatientViewSet(viewsets.ModelViewSet):
                     {"message": settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIS},
                     status=status.HTTP_404_NOT_FOUND
                 )
+            
+    @action(detail=False, methods=['get', 'post', 'patch'], url_path='workout-routine')
+    def workout_routine(self, request):
+        if request.method == 'POST':
+            serializer = WorkoutRoutineSerializer(
+                data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save(patient=Patient.objects.get(patient_username=request.user))
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        elif request.method == 'GET':
+            if request.query_params.get('routine_id'):
+                try:
+                    workout = WorkoutRoutine.objects.get(id=request.query_params.get('routine_id'))
+                    serializer = WorkoutRoutineSerializer(
+                        workout, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except WorkoutRoutine.DoesNotExist:
+                    return Response({"message": "No workout routine found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+
+            workouts = WorkoutRoutine.objects.filter(patient__patient_username=request.user)
+            serializer = WorkoutRoutineSerializer(
+                workouts, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        elif request.method == 'PATCH':
+            if not request.query_params.get('routine_id'):
+                return Response({"message": "Please provide an id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                workout = WorkoutRoutine.objects.get(id=request.query_params.get('routine_id'))
+                serializer = WorkoutRoutineSerializer(
+                    workout, data=request.data, partial=True, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except WorkoutRoutine.DoesNotExist:
+                return Response({"message": "No workout routine found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+    @action(detail=False, methods=['get', 'post', 'patch'], url_path='treament-tracker')
+    def treatment_tracker(self, request):
+        action_choice: str = request.query_params.get('action_choice')
+
+        if action_choice and action_choice.lower() not in ['feedback', 'create']:
+                return Response({"message": "Invalid action choice"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if request.method == 'POST':
+            if action_choice and  action_choice.lower() == 'feedback':
+                serializer = TreatmentFeedBackSerializer(
+                    data=request.data, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            serializer = TreatmentTrackerSerializer(
+                data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            # serializer = TreatmentTrackerSerializer(
+            #     serializer.instance, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        elif request.method == 'GET':
+            try:
+                treatments = TreatmentTracker.objects.get(
+                    patient__patient_username=request.user)
+                serializer = TreatmentTrackerSerializer(
+                    treatments, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except TreatmentTracker.DoesNotExist:
+                return Response({"message": "No treatment tracker found"}, status=status.HTTP_200_OK)
+
+        elif request.method == 'PATCH':
+            if not request.query_params.get('tracker_id'):
+                return Response({"message": "Please provide an id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                treatment = TreatmentTracker.objects.get(
+                    id=request.query_params.get('medication_id'))
+                serializer = self.get_serializer(
+                    treatment, data=request.data, partial=True, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except TreatmentTracker.DoesNotExist:
+                return Response({"message": "No treatment tracker found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+            
+
+    @action(detail=False, methods=['get', 'post', 'patch'], url_path='treatment-calendar')
+    def treatment_calendar(self, request):
+        if request.method == 'POST':
+            serializer = TreatmentCalendarSerializer(
+                data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save(patient=Patient.objects.get(patient_username=request.user))
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        elif request.method == 'GET':
+            if request.query_params.get('day_id'):
+                try:
+                    calendar = TreatmentCalendar.objects.get(id=request.query_params.get('day_id'))
+                    serializer = TreatmentCalendarSerializer(
+                        calendar, context={'request': request})
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except TreatmentTracker.DoesNotExist:
+                    return Response({"message": "No treatment calendar found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+
+            calendars = TreatmentCalendar.objects.filter(patient__patient_username=request.user)
+            serializer = TreatmentCalendarSerializer(
+                calendars, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        elif request.method == 'PATCH':
+            if not request.query_params.get('day_id'):
+                return Response({"message": "Please provide an day id"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                calendar = TreatmentCalendar.objects.get(id=request.query_params.get('day_id'))
+
+                # not allow to take medication in a future date
+                if calendar.date > timezone.now().date():
+                    return Response({"message": "You can't take medication in a future date"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                calendar.has_taken = not calendar.has_taken
+                calendar.save()
+                serializer = TreatmentCalendarSerializer(
+                    calendar, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except TreatmentTracker.DoesNotExist:
+                return Response({"message": "No treatment calendar found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
+
+            
+    @action(detail=False, methods=['get'], url_path='general-views')
+    def general_health_views(self, request):
+        page_views_list: list = ['general_health', 'prescription', 'lab_test', 'recommendation', 'tips']
+        choice: str = request.query_params.get('views')
+
+        if not choice:
+            return Response({"message": "Please provide a views page name"}, status=status.HTTP_400_BAD_REQUEST)
+        elif choice.lower() not in page_views_list:
+            return Response({"message": f"Invalid page name. Choose from {page_views_list}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.method == 'GET':
+            if choice.lower() == 'general_health':
+                try:
+                    general_health = Patient.objects.get(patient_username=request.user)
+                    general_health = GeneralHealgthViewSerialize(
+                        general_health, context={'request': request})
+                    return Response(general_health.data, status=status.HTTP_200_OK)
+                except Patient.DoesNotExist:
+                    return Response({"message": "Current user is not a patient"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"message": "No data found"}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_path='get-patient-records')
     def get_patient_records(self, request):

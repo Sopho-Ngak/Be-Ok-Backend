@@ -138,7 +138,7 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
     documents = DoctorDocumentSerializer(source="doctor_documents", read_only=True)
     availabilities = serializers.SerializerMethodField()
     patients_consulted = serializers.SerializerMethodField()
-    dependents_consulted = serializers.SerializerMethodField()
+    # dependents_consulted = serializers.SerializerMethodField()
     # appointments = serializers.SerializerMethodField()
 
     class Meta:
@@ -156,7 +156,7 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
             'documents', 
             'availabilities',
             'patients_consulted',
-            'dependents_consulted',
+            # 'dependents_consulted',
             # 'appointments', 
             ]
     def get_personal_information(self, obj):
@@ -170,12 +170,11 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
         return serializer.data
     
     def get_patients_consulted(self, obj):
-        serializers = patient_serializers.PatientReportSerializer(obj.patients_consulted, many=True, context=self.context)
-        return serializers.data
+        return obj.patients_consulted.all().count() + obj.dependents_consulted.all().count()
     
-    def get_dependents_consulted(self, obj):
-        serializers = patient_serializers.PatientDependentReportSerializer(obj.dependents_consulted, many=True, context=self.context)
-        return serializers.data
+    # def get_dependents_consulted(self, obj):
+    #     serializers = patient_serializers.PatientDependentReportSerializer(obj.dependents_consulted, many=True, context=self.context)
+    #     return serializers.data
     
     # def get_appointments(self, obj):
     #     appointments = Appointement.objects.filter(doctor=obj, doctor_availability__ending_date__gte=timezone.now())
