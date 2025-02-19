@@ -89,7 +89,9 @@ class PatientViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
 
     def get_permissions(self):
-        if self.action == 'ai_consultation':
+        if self.action in [
+            'ai_consultation', 'workout_routine', 'treatment_tracker', 'treatment_calendar',
+            'general_health_views']:
             self.permission_classes = [IsAuthenticated, IsPatient]
         elif self.action == 'get_patient_record':
             self.permission_classes = [IsAuthenticated, IsDoctorOrPatient]

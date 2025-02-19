@@ -4,11 +4,8 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 
 # Django imports
-from django.conf import settings
 from django.contrib.auth import update_session_auth_hash, logout
 
 # Local imports
@@ -17,6 +14,7 @@ from accounts.serializers import (
     SetNewPasswordSerializer, ProfilePictureSerializer, ChangePasswordSerializer, GoogleLoginSerializer)
 from accounts.models import (User, VerificationCode, ProfilePicture)
 from utils.generate_code import get_random_code
+from utils.google_auth import GoogleAuth
 from accounts.tasks import send_activation_code_via_email
 
 
@@ -49,37 +47,24 @@ class UserLogin(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], url_path='google-login')
     def google_login(self, request):
+
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        google_auth = GoogleAuth()
+
+        token = serializer.validated_data.get('google_id_token')\
+        if serializer.validated_data.get('google_id_token') else serializer.validated_data.get('google_access_token')
         
-        try:
-            serializer = self.get_serializer(data=request.data, context={'request': request})
-            serializer.is_valid(raise_exception=True)
-            id_info: dict = id_token.verify_oauth2_token(serializer.validated_data['google_id_token'], google_requests.Request(), settings.GOOGLE_CLIENT_ID)
-
-            email: str = id_info['email']
-            full_name = id_info['name']
-            username = email.split('@')[0]
-            # profile_picture = id_info.get('picture')
-
-            user, created = User.objects.get_or_create(email=email, defaults={
-                'username': username,
-                'full_name': full_name,
-                'user_type': serializer.validated_data['user_type'],
-            })
-            if created:
-                user.set_unusable_password()
-                user.is_active = True
-                user.save()
-
-            token = CustomTokenObtainPairSerializer().get_token(user)
-
-            return Response({
-                'refresh': str(token),
-                'access': str(token.access_token),
-                'user_type': user.user_type,
-                }, status=status.HTTP_200_OK)
-        except ValueError as e:
-            print(e)
+        credentials = google_auth.login(
+            token=token,
+            auth_type=request.query_params.get('auth_type'),
+            user_type=serializer.validated_data['user_type']
+        )
+        if not credentials:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(credentials, status=status.HTTP_200_OK)
+
     
     @action(detail=False, methods=['post'], url_path='refresh-token')
     def refresh_token(self, request):
