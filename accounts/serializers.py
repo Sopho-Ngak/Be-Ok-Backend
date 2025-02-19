@@ -38,12 +38,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
     
 class GoogleLoginSerializer(serializers.Serializer):
-    google_id_token = serializers.CharField(write_only=True)
+    google_id_token = serializers.CharField(write_only=True, required=False)
+    google_access_token = serializers.CharField(write_only=True, required=False)
     user_type = serializers.CharField(write_only=True, required=True)
 
     def validate(self, attrs):
         if attrs.get('user_type') not in ['patient', 'doctor']:
             raise serializers.ValidationError("Invalid user type. choce from ['patient', 'doctor']")
+        
+        if not attrs.get('google_id_token') and not attrs.get('google_access_token'):
+            raise serializers.ValidationError("Either google_id_token or google_access_token is required")
+        
+        if not self.context['request'].query_params.get('auth_type'):
+            raise serializers.ValidationError("query param auth_type is required")
+        
+        elif self.context['request'].query_params.get('auth_type') not in ['id_token', 'access_token']:
+            raise serializers.ValidationError("Invalid value for auth_type. Choose from ['id_token', 'access_token']")
+        
+        if self.context['request'].query_params.get('auth_type') == 'id_token':
+            if not attrs.get('google_id_token'):
+                raise serializers.ValidationError("google_id_token is required")
+        else:
+            if not attrs.get('google_access_token'):
+                raise serializers.ValidationError("google_access_token is required")
         return attrs
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
