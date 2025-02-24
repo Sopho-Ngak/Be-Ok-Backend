@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Count
 
 # import serializers
 from rest_framework import serializers
@@ -14,6 +14,7 @@ from doctors.models import Doctor, DoctorAvailability
 from doctors.serializers import MinimumDoctorInfoSerializer, DoctorAvailabilitySerializer
 
 from utils.payment_module import Payment
+from utils import common
 
 
 class PatientPaymentSerializer(serializers.ModelSerializer):
@@ -382,9 +383,55 @@ class PatientReportSerializer(serializers.ModelSerializer):
 
         return data
     
+class PatientRecommendationSerializer(serializers.ModelSerializer):
+    # consultation_details = serializers.SerializerMethodField()
+    doctor_details = serializers.SerializerMethodField()
+
+    def validate(self, attrs):
+        # accept only pdf files
+        pdf_file = self.context['request'].FILES.get('form')
+        if pdf_file and pdf_file.content_type != 'application/pdf':
+            raise serializers.ValidationError("Only PDF files are accepted")
+        return super().validate(attrs)
+
+    class Meta:
+        model = PatientRecommendationForm
+        fields = [
+            'id',
+            'consultation',
+            # 'consultation_details',
+            'form',
+            'created_at',
+            "doctor_details"
+        ]
+
+    def get_doctor_details(self, obj: PatientRecommendationForm):
+        serializer = MinimumDoctorInfoSerializer(obj.consultation.consulted_by_doctor, context=self.context)
+        return serializer.data
+
+    # def get_consultation_details(self, obj):
+    #     serializer = PatientReportSerializer(obj.consultation, context=self.context)
+    #     return serializer.data
+    
 
 class WorkoutRoutineSerializer(serializers.ModelSerializer):
     routine_overview = serializers.SerializerMethodField()
+    reminder_dates = serializers.JSONField(required=False)
+
+    def validate(self, attrs: dict):
+        if attrs['end_date'] < attrs.get('start_date'):
+            raise serializers.ValidationError("End date can't be less than start date")
+        # validate if reminder_dates is a list of dates in format "YYYY-MM-DD"
+        if attrs.get('reminder_dates'):
+            if not isinstance(attrs.get('reminder_dates'), list):
+                raise serializers.ValidationError("Reminder dates must be a list of dates")
+            
+            if not all(isinstance(item, str) for item in attrs['reminder_dates']):
+                raise serializers.ValidationError("Reminder dates must be a list of dates")
+            
+            if not all(common.is_valid_date(item) for item in attrs['reminder_dates']):
+                raise serializers.ValidationError("Reminder dates must be a list of valid dates in format YYYY-MM-DD")
+        return super().validate(attrs)
 
     class Meta:
         model = WorkoutRoutine
@@ -394,6 +441,8 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
             'routine',
             'start_date',
             'end_date',
+            'reminder_dates',
+            'has_reminder',
             'created_at',
             'routine_overview',
         ]
@@ -406,12 +455,20 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
 
         return {
             "ongoing": obj.on_going,
-            "days_used": obj.days_used,
+            "days_used": obj.days_used_till_today,
             "total_days_number": obj.total_days,
             "total_days": total_days,
-            "days_remaining": obj.days_remaining,
-            "status": "completed" if obj.end_date < timezone.now().date() else "ongoing"
+            "days_remaining_to_start": obj.days_remaining_to_start if obj.days_remaining_to_start > 0 else 0,
+            "days_remaining_to_end": obj.total_days - obj.days_used_till_today if obj.total_days - obj.days_used_till_today > 0 else 0,
+            # "status": "completed" if obj.start_date < timezone.now().date() else "ongoing"
         }
+    
+    def create(self, validated_data: dict):
+        instance: WorkoutRoutine = super().create(validated_data)
+        if validated_data.get("reminder_dates"):
+            instance.has_reminder = True
+            instance.save()
+        return instance
 
 class TreatmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -531,6 +588,267 @@ class TreatmentFeedBackSerializer(serializers.ModelSerializer):
 
         return feadback_instance
 
+class ConsultationCountSerializer(PatientReportSerializer):
+    consultation_count = serializers.IntegerField()
+    doctor_details = serializers.SerializerMethodField()
+
+    class Meta(PatientReportSerializer.Meta):
+        fields = [
+            'consultation_count',
+            'doctor_details',
+            
+        ]
+
+    def get_doctor_details(self, obj):
+        doctor = Doctor.objects.get(id=obj['consulted_by_doctor'])
+        serializer = MinimumDoctorInfoSerializer(doctor, context=self.context)
+        return serializer.data
+    
+
+class PatientLabTestSerializer(serializers.ModelSerializer):
+    # consultation_details = serializers.SerializerMethodField()
+    doctor_details = serializers.SerializerMethodField()
+
+    def validate(self, attrs):
+        # accept only pdf files
+        pdf_file = self.context['request'].FILES.get('file')
+        if pdf_file and pdf_file.content_type != 'application/pdf':
+            raise serializers.ValidationError("Only PDF files are accepted")
+        return super().validate(attrs)
+
+    class Meta:
+        model = PatientLabTest
+        fields = [
+            'id',
+            'consultation',
+            # 'consultation_details',
+            'name',
+            'description',
+            'result',
+            'test_date',
+            'file',
+            'created_at',
+            'doctor_details',
+        ]
+
+    # def get_consultation_details(self, obj):
+    #     serializer = PatientReportSerializer(obj.consultation, context=self.context)
+    #     return serializer.data
+
+    def get_doctor_details(self, obj: PatientLabTest):
+        serializer = MinimumDoctorInfoSerializer(obj.consultation.consulted_by_doctor, context=self.context)
+        return serializer.data
+
+class LabTestCountSerializer(PatientLabTestSerializer):
+    labtest_count = serializers.IntegerField()
+    doctor_details = serializers.SerializerMethodField()
+
+    class Meta(PatientLabTestSerializer.Meta):
+        fields = [
+            'labtest_count',
+            'doctor_details',
+            
+        ]
+
+    def get_doctor_details(self, obj):
+        doctor = Doctor.objects.get(id=obj['consultation__consulted_by_doctor'])
+        serializer = MinimumDoctorInfoSerializer(doctor, context=self.context)
+        return serializer.data
+
+
+class RecommandationCountSerializer(PatientRecommendationSerializer):
+    recommandation_count = serializers.IntegerField()
+    doctor_details = serializers.SerializerMethodField()
+
+    class Meta(PatientRecommendationSerializer.Meta):
+        fields = [
+            'recommandation_count',
+            'doctor_details',
+            
+        ]
+
+    def get_doctor_details(self, obj):
+        doctor = Doctor.objects.get(id=obj['consultation__consulted_by_doctor'])
+        serializer = MinimumDoctorInfoSerializer(doctor, context=self.context)
+        return serializer.data
+
+class RecommandationViewsSectionSerializer(serializers.ModelSerializer):
+    recommandation_count_by_doctors = serializers.SerializerMethodField()
+    recommandation_overview = serializers.SerializerMethodField()
+    recommandation_forms = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = Patient
+        fields = [
+            'id',
+            'recommandation_overview',
+            'recommandation_count_by_doctors',
+            'recommandation_forms'
+        ]
+
+    def get_recommandation_count_by_doctors(self, obj: Patient):
+        # user = self.context['request'].user
+        patient_reports = PatientRecommendationForm.objects.filter(consultation__user=obj, form__isnull=False, form__gt='')\
+            .values('consultation__consulted_by_doctor')\
+                .annotate(recommandation_count=Count('id'))
+        
+        serializer = RecommandationCountSerializer(patient_reports, many=True, context=self.context)
+        return serializer.data
+    
+    def get_recommandation_forms(self, obj: Patient):
+        recommandation = PatientRecommendationForm.objects.filter(
+            consultation__user=obj, form__isnull=False, form__gt='')
+        serializer = PatientRecommendationSerializer(recommandation, many=True, context=self.context)
+
+        return serializer.data
+    
+    def get_recommandation_overview(self, obj: Patient):
+        
+
+        # Daily reports (created today)
+        daily_reports = PatientRecommendationForm.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_day, form__isnull=False, form__gt='').count()
+
+        # Weekly reports (created this week)
+        weekly_reports = PatientRecommendationForm.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_week, form__isnull=False, form__gt='').count()
+
+        # Monthly reports (created this month)
+        monthly_reports = PatientRecommendationForm.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_month, form__isnull=False, form__gt='').count()
+
+        # Yearly reports (created this year)
+        yearly_reports = PatientRecommendationForm.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_year, form__isnull=False, form__gt='').count()
+
+        return {
+            'daily': daily_reports,
+            'weekly': weekly_reports,
+            'monthly': monthly_reports,
+            'yearly': yearly_reports,
+        }
+    
+    
+
+
+class LabTestsViewsSectionSerializer(serializers.ModelSerializer):
+    labtest_count_by_doctors = serializers.SerializerMethodField()
+    labtest_overview = serializers.SerializerMethodField()
+    medical_results_form = serializers.SerializerMethodField()
+    
+
+    class Meta:
+        model = Patient
+        fields = [
+            'id',
+            'labtest_overview',
+            'labtest_count_by_doctors',
+            'medical_results_form'
+        ]
+
+    def get_labtest_count_by_doctors(self, obj: Patient):
+        # user = self.context['request'].user
+        patient_reports = PatientLabTest.objects.filter(consultation__user=obj, file__isnull=False, file__gt='')\
+            .values('consultation__consulted_by_doctor')\
+                .annotate(labtest_count=Count('id'))
+        
+        serializer = LabTestCountSerializer(patient_reports,many=True, context=self.context)
+        return serializer.data
+    
+    def get_medical_results_form(self, obj: Patient):
+        labtest = PatientLabTest.objects.filter(
+            consultation__user=obj, file__isnull=False, file__gt='')
+        serializer = PatientLabTestSerializer(labtest, many=True, context=self.context)
+
+        return serializer.data
+    
+    def get_labtest_overview(self, obj: Patient):
+        
+
+        # Daily reports (created today)
+        daily_reports = PatientLabTest.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_day, file__isnull=False, file__gt='').count()
+
+        # Weekly reports (created this week)
+        weekly_reports = PatientLabTest.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_week, file__isnull=False, file__gt='').count()
+
+        # Monthly reports (created this month)
+        monthly_reports = PatientLabTest.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_month, file__isnull=False, file__gt='').count()
+
+        # Yearly reports (created this year)
+        yearly_reports = PatientLabTest.objects.filter(
+            consultation__user=obj, created_at__gte=common.start_of_year, file__isnull=False, file__gt='').count()
+
+        return {
+            'daily': daily_reports,
+            'weekly': weekly_reports,
+            'monthly': monthly_reports,
+            'yearly': yearly_reports,
+        }
+
+class PrescriptionViewsSectionSerializer(serializers.ModelSerializer):
+    counsultation_count_by_doctors = serializers.SerializerMethodField()
+    consultation_overview = serializers.SerializerMethodField()
+    medical_results_form = serializers.SerializerMethodField()
+    
+
+    class Meta:
+        model = Patient
+        fields = [
+            'id',
+            'consultation_overview',
+            'counsultation_count_by_doctors',
+            'medical_results_form',
+
+        ]
+
+    def get_counsultation_count_by_doctors(self, obj: Patient):
+        # user = self.context['request'].user
+        patient_reports = PatientReport.objects.filter(user=obj)\
+            .values('consulted_by_doctor')\
+                .annotate(consultation_count=Count('id'))
+        
+        # TODO: add AI reports in the future to count the consultation by AI
+        # ai_reports = AiConsultationPatient.objects.filter(user=obj)\
+        #     .values('consulted_by_doctor')\
+        #         .annotate(consultation_count=Count('consulted_by_doctor'))
+        # consultation_count = list(patient_reports) + list(ai_reports)
+        serializer = ConsultationCountSerializer(patient_reports, many=True, context=self.context)
+        return serializer.data
+    
+    def get_medical_results_form(self, obj: Patient):
+        # user = self.context['request'].user
+        medical_forms = PatientPrescriptionForm.objects.filter(
+            consultation__user=obj)
+        
+        serializer = PatientPrescriptionFormSerializer(medical_forms, many=True, context=self.context)
+        return serializer.data
+    
+    def get_consultation_overview(self, obj: Patient):
+        
+
+        # Daily reports (created today)
+        daily_reports = PatientReport.objects.filter(user=obj, created_at__gte=common.start_of_day).count()
+
+        # Weekly reports (created this week)
+        weekly_reports = PatientReport.objects.filter(user=obj, created_at__gte=common.start_of_week).count()
+
+        # Monthly reports (created this month)
+        monthly_reports = PatientReport.objects.filter(user=obj, created_at__gte=common.start_of_month).count()
+
+        # Yearly reports (created this year)
+        yearly_reports = PatientReport.objects.filter(user=obj, created_at__gte=common.start_of_year).count()
+
+        return {
+            'daily': daily_reports,
+            'weekly': weekly_reports,
+            'monthly': monthly_reports,
+            'yearly': yearly_reports,
+        }
+
 class GeneralHealgthViewSerialize(serializers.ModelSerializer):
     workout_routines = WorkoutRoutineSerializer(
         source="workout_routine", many=True, read_only=True)
@@ -539,6 +857,7 @@ class GeneralHealgthViewSerialize(serializers.ModelSerializer):
     my_doctors = serializers.SerializerMethodField()
     treatments_calendar = TreatmentCalendarSerializer(
         source="patient_treatment_calendar", many=True, read_only=True)
+    
     class Meta:
         model = Patient
         fields = [
@@ -547,7 +866,7 @@ class GeneralHealgthViewSerialize(serializers.ModelSerializer):
             'chronic_diseases',
             'habits',
             'current_prescription',
-            'is_pregnant',
+            'blood_group',
             # 'has_childrens',
             # 'has_family_members',
             # 'location',
@@ -559,13 +878,17 @@ class GeneralHealgthViewSerialize(serializers.ModelSerializer):
         ]
 
     def get_my_doctors(self, obj: Patient):
+        user = self.context['request'].user
+
         doctors = Doctor.objects.filter(
-                    Q(doctor_documents__is_approved=True,
-                    patient_consultated_by__user__patient_username=self.context['request'].user) |
-                    Q(doctor_documents__is_approved=True,
-                      dependent_consultated_by__patient_username__patient_username=self.context['request'].user))
+            doctor_documents__is_approved=True
+        ).filter(
+            Q(patient_consultated_by__user__patient_username=user) |
+            Q(dependent_consultated_by__patient_username__patient_username=user)
+        ).distinct()
         serializer = MinimumDoctorInfoSerializer(doctors, many=True, context=self.context)
         return serializer.data
+
 
 
 
@@ -918,21 +1241,35 @@ class DoctorAppointmentInfoSerializer(serializers.ModelSerializer):
 
 
 class PatientPrescriptionFormSerializer(serializers.ModelSerializer):
-    consultation_details = serializers.SerializerMethodField()
+    # consultation_details = serializers.SerializerMethodField()
+    doctor_details = serializers.SerializerMethodField()
+
+    def validate(self, attrs):
+        # accept only pdf files
+        pdf_file = self.context['request'].FILES.get('form')
+        if pdf_file and pdf_file.content_type != 'application/pdf':
+            raise serializers.ValidationError("Only PDF files are accepted")
+        return super().validate(attrs)
 
     class Meta:
         model = PatientPrescriptionForm
         fields = [
             'id',
             'consultation',
-            'consultation_details',
             'form',
             'created_at',
+            'doctor_details',
+            # 'consultation_details',
         ]
 
-    def get_consultation_details(self, obj):
-        serializer = PatientReportSerializer(obj.consultation, context=self.context)
+    # def get_consultation_details(self, obj):
+    #     serializer = PatientReportSerializer(obj.consultation, context=self.context)
+    #     return serializer.data
+
+    def get_doctor_details(self, obj: PatientPrescriptionForm):
+        serializer = MinimumDoctorInfoSerializer(obj.consultation.consulted_by_doctor, context=self.context)
         return serializer.data
+    
     
 class DependentsPrescriptionFormSerializer(serializers.ModelSerializer):
     consultation_details = serializers.SerializerMethodField()
@@ -951,26 +1288,6 @@ class DependentsPrescriptionFormSerializer(serializers.ModelSerializer):
         serializer = PatientDependentReportSerializer(obj.consultation, context=self.context)
         return serializer.data
     
-class PatientLabTestSerializer(serializers.ModelSerializer):
-    consultation_details = serializers.SerializerMethodField()
-
-    class Meta:
-        model = PatientLabTest
-        fields = [
-            'id',
-            'consultation',
-            'consultation_details',
-            'name',
-            'description',
-            'result',
-            'test_date',
-            'file',
-            'created_at',
-        ]
-
-    def get_consultation_details(self, obj):
-        serializer = PatientReportSerializer(obj.consultation, context=self.context)
-        return serializer.data
     
 
 class DependentsLabTestSerializer(serializers.ModelSerializer):
@@ -994,24 +1311,6 @@ class DependentsLabTestSerializer(serializers.ModelSerializer):
         serializer = PatientDependentReportSerializer(obj.consultation, context=self.context)
         return serializer.data
     
-class PatientRecommendationSerializer(serializers.ModelSerializer):
-    consultation_details = serializers.SerializerMethodField()
-
-    class Meta:
-        model = PatientRecommendationForm
-        fields = [
-            'id',
-            'consultation',
-            'consultation_details',
-            'form',
-            'created_at',
-        ]
-
-    def get_consultation_details(self, obj):
-        serializer = PatientReportSerializer(obj.consultation, context=self.context)
-        return serializer.data
-    
-
 class DependentsRecommendationSerializer(serializers.ModelSerializer):
     consultation_details = serializers.SerializerMethodField()
 
