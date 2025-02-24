@@ -2,10 +2,10 @@ def medical_form_upload_path(instance, filename):
     return '/'.join(['medical_forms', str(instance.patient_username.patient_username), filename])
 
 def prescribtion_form_upload_path(instance, filename):
-    return '/'.join(['prescriptions', str(instance.consultation.patient_username), filename])
+    return '/'.join(['prescriptions', str(instance.consultation.user), filename])
 
 def lab_test_upload_path(instance, filename):
-    return '/'.join(['lab_tests', str(instance.consultation.patient_username.patient_username), filename])
+    return '/'.join(['lab_tests', str(instance.consultation.user), filename])
 
 def upload_path(instance, filename):
     return '/'.join(['profile_pictures/dependents', str(instance.user.username), filename])

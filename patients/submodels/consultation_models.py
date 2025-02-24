@@ -163,7 +163,7 @@ class PatientReport(models.Model):
     # prescription = models.TextField(blank=True, null=True)
     recommended_tests = models.TextField(blank=True, null=True)
     recommendation = models.TextField(blank=True, null=True)
-    medical_form = models.FileField(upload_to=medical_form_upload_path, blank=True, null=True)
+    # medical_form = models.FileField(upload_to=medical_form_upload_path, blank=True, null=True)
     is_paid = models.BooleanField(default=False)
     status = models.CharField(choices=CONSULTATION_STATUS, default=CONSULTATION_STATUS[0][0], max_length=255)
     service = models.CharField(choices=SERVICE_CHOICES, default=SERVICE_CHOICES[12][1], max_length=255, blank=True, null=True)

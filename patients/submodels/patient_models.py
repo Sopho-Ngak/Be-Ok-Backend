@@ -62,23 +62,27 @@ class WorkoutRoutine(models.Model):
     routine = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
+    reminder_dates = models.JSONField(blank=True, null=True)
+    has_reminder = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def on_going(self):
-        return self.end_date >= timezone.now().date()
+        return self.start_date <= timezone.now().date()
     
     @property
-    def days_used(self):
-        return (self.end_date - self.start_date).days
+    def days_used_till_today(self):
+        return  0 if not self.on_going else (timezone.now().date() - self.start_date).days
+    
+    
     
     @property
     def total_days(self):
         return (self.end_date - self.start_date).days
     
     @property
-    def days_remaining(self):
-        return (self.end_date - timezone.now().date()).days
+    def days_remaining_to_start(self):
+        return (self.start_date - timezone.now().date()).days
     
     def __str__(self):
         return f"{self.patient} - {self.routine}"

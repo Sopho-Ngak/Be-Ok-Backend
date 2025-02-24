@@ -25,7 +25,7 @@ from patients.serializers import (PatientSerializer,AiConsultationPatientSeriali
                                   PatientPaymentStatusSerializer, PatientCashInSerializer, AppointmentSerializer, PatientPrescriptionFormSerializer,
                                   DependentsPrescriptionFormSerializer, PatientLabTestSerializer, DependentsLabTestSerializer, PatientRecommendationSerializer,
                                   DependentsRecommendationSerializer, TreatmentTrackerSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer, AiConsultationInfoPatientSerializer,
-                                  GeneralHealgthViewSerialize, WorkoutRoutineSerializer, TreatmentFeedBackSerializer, TreatmentCalendarSerializer)
+                                  GeneralHealgthViewSerialize, WorkoutRoutineSerializer, TreatmentFeedBackSerializer, TreatmentCalendarSerializer, PrescriptionViewsSectionSerializer, LabTestsViewsSectionSerializer, RecommandationViewsSectionSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
 from doctors.permissions import IsDoctor
@@ -350,15 +350,34 @@ class PatientViewSet(viewsets.ModelViewSet):
         elif choice.lower() not in page_views_list:
             return Response({"message": f"Invalid page name. Choose from {page_views_list}"}, status=status.HTTP_400_BAD_REQUEST)
 
+        choice = choice.lower()
         if request.method == 'GET':
-            if choice.lower() == 'general_health':
-                try:
-                    general_health = Patient.objects.get(patient_username=request.user)
-                    general_health = GeneralHealgthViewSerialize(
-                        general_health, context={'request': request})
-                    return Response(general_health.data, status=status.HTTP_200_OK)
-                except Patient.DoesNotExist:
-                    return Response({"message": "Current user is not a patient"}, status=status.HTTP_200_OK)
+            try:
+                    patient = Patient.objects.get(patient_username=request.user)
+                    
+            except Patient.DoesNotExist:
+                return Response({"message": "Current user is not a patient"}, status=status.HTTP_200_OK)
+                
+            if choice == 'general_health':
+                
+                general_health = GeneralHealgthViewSerialize(
+                        patient, context={'request': request})
+                return Response(general_health.data, status=status.HTTP_200_OK)
+            elif choice == 'prescription':
+                prescription_views = PrescriptionViewsSectionSerializer(
+                    patient, context={'request': request})
+                return Response(prescription_views.data, status=status.HTTP_200_OK)
+            
+            elif choice == 'lab_test':
+                lab_test_views = LabTestsViewsSectionSerializer(
+                    patient, context={'request': request})
+                return Response(lab_test_views.data, status=status.HTTP_200_OK)
+            
+            elif choice == 'recommendation':
+                recommendation_views = RecommandationViewsSectionSerializer(
+                    patient, context={'request': request})
+                return Response(recommendation_views.data, status=status.HTTP_200_OK)
+
             else:
                 return Response({"message": "No data found"}, status=status.HTTP_200_OK)
 
@@ -731,7 +750,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
             prescriptions = PatientPrescriptionForm.objects.filter(
-                consultation__patient_username__patient_username=request.user)
+                consultation__user__patient_username=request.user)
             serializer = self.get_serializer(
                 prescriptions, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -808,7 +827,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
             lab_tests = PatientLabTest.objects.filter(
-                consultation__patient_username__patient_username=request.user)
+                consultation__user__patient_username__username=request.user)
             serializer = self.get_serializer(
                 lab_tests, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -888,7 +907,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                     return Response({"message": "No recommendation found with this id provided"}, status=status.HTTP_404_NOT_FOUND)
 
             recommendations = PatientRecommendationForm.objects.filter(
-                consultation__patient_username__patient_username=request.user)
+                consultation__user__patient_username=request.user)
             serializer = self.get_serializer(
                 recommendations, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
