@@ -127,7 +127,7 @@ class TreatmentCalendar(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_treatment_calendar')
     treatment = models.ManyToManyField(Treatment, related_name='treatment_calendar')
-    date = models.DateField(unique=True)
+    date = models.DateField()
     has_taken = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -136,6 +136,33 @@ class TreatmentCalendar(models.Model):
     
     class Meta:
         ordering = ['-date']
+
+
+class PatientAccountHistory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='patient_account_history', db_index=True)
+    field = models.CharField(max_length=255)
+    value = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.patient)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+class FamilyDisease(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='family_disease', db_index=True)
+    disease = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.patient} - {self.disease}"
+    
+    class Meta:
+        ordering = ['-created_at']
     
     
 

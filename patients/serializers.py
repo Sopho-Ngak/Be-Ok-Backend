@@ -7,7 +7,7 @@ from patients.models import (
     DependentProfilePicture, Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
     PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, AiConsultationPatient,AIConsultationPatientSymptoms,
     AIConsultationPatientPrescription, AiPatientDiagnosis, DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment
-    ,Dependent, WorkoutRoutine, Treatment, TreatmentTracker, TreatmentFeedBack, TreatmentCalendar)
+    ,Dependent, WorkoutRoutine, Treatment, TreatmentTracker, TreatmentFeedBack, TreatmentCalendar, FamilyDisease, PatientAccountHistory)
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer, UserCreateSerializer
 from doctors.models import Doctor, DoctorAvailability
@@ -28,6 +28,21 @@ class PatientPaymentSerializer(serializers.ModelSerializer):
             'transaction_ref',
             'created_at',
         ]
+
+class FamilyDiseaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyDisease
+        fields = [
+            'id',
+            'disease',
+            'created_at',
+        ]
+
+    def create(self, validated_data):
+        patient = Patient.objects.get(patient_username__username=self.context['request'].user)
+        instance = FamilyDisease.objects.create(patient=patient, disease=validated_data['disease'])
+        return instance
+    
 
 
 class DependentsPaymentSerializer(serializers.ModelSerializer):
@@ -499,7 +514,7 @@ class TreatmentTrackerSerializer(serializers.ModelSerializer):
         ]
 
     def get_medications(self, obj: TreatmentTracker):
-        serializer = TreatmentSerializer(obj.medications.all(), many=True)
+        serializer = TreatmentSerializer(obj.medications.filter(is_active=True), many=True)
         return serializer.data
 
     def create(self, validated_data: dict):
@@ -534,7 +549,7 @@ class TreatmentCalendarSerializer(serializers.ModelSerializer):
             'created_at',
         ]
     
-    def create(self, validated_data):
+    def create(self, validated_data: dict):
         try:
             patient = Patient.objects.get(patient_username__username=self.context['request'].user)
         except Patient.DoesNotExist:
@@ -545,8 +560,17 @@ class TreatmentCalendarSerializer(serializers.ModelSerializer):
         medication = TreatmentTracker.objects.get(
             patient=patient).medications.filter(is_active=True)
         
-        calendar_instance = TreatmentCalendar.objects.create(
+        calendar_instance, created = TreatmentCalendar.objects.get_or_create(
             patient=patient, date=validated_data['date'])
+        
+        # if created and date is current date then has taken is True
+        if created and validated_data['date'] <= timezone.now().date():
+            calendar_instance.has_taken = True
+            calendar_instance.save()
+
+        elif validated_data['date'] <= timezone.now().date():
+            calendar_instance.has_taken = not calendar_instance.has_taken
+            calendar_instance.save()
         
         calendar_instance.treatment.set(medication)
 
@@ -857,14 +881,17 @@ class GeneralHealgthViewSerialize(serializers.ModelSerializer):
     my_doctors = serializers.SerializerMethodField()
     treatments_calendar = TreatmentCalendarSerializer(
         source="patient_treatment_calendar", many=True, read_only=True)
+    weight_details = serializers.SerializerMethodField()
+    family_diseases = serializers.SerializerMethodField()
     
     class Meta:
         model = Patient
         fields = [
             'id',
-            'weight',
             'chronic_diseases',
             'habits',
+            'weight_details',
+            'family_diseases',
             'current_prescription',
             'blood_group',
             # 'has_childrens',
@@ -887,6 +914,23 @@ class GeneralHealgthViewSerialize(serializers.ModelSerializer):
             Q(dependent_consultated_by__patient_username__patient_username=user)
         ).distinct()
         serializer = MinimumDoctorInfoSerializer(doctors, many=True, context=self.context)
+        return serializer.data
+
+    def get_weight_details(self, obj: Patient):
+        most_recent_weight_history = PatientAccountHistory.objects.filter(
+            patient=obj, field='weight').order_by('-created_at').first()
+        if most_recent_weight_history:
+            most_recent_weight_history = float(most_recent_weight_history.value)
+        else:
+            most_recent_weight_history = 0.0
+        return {
+            "weight": obj.weight,
+            "variation": obj.weight - most_recent_weight_history if obj.weight and most_recent_weight_history > 0.0 else 0
+        }
+    
+    def get_family_diseases(self, obj: Patient):
+        family_diseases = FamilyDisease.objects.filter(patient=obj, is_active=True)
+        serializer = FamilyDiseaseSerializer(family_diseases, many=True, context=self.context)
         return serializer.data
 
 
@@ -988,12 +1032,47 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
             'id',
             'patient_username',
             'blood_group',
+            'weight',
             'alergies',
             'chronic_diseases',
             'habits',
             'current_prescription',
             'is_pregnant',
         ]
+
+    def update(self, instance: Patient, validated_data: dict):
+        # List of fields to track in PatientAccountHistory
+        TRACKED_FIELDS = [
+            'weight',
+            'blood_group',
+            'alergies',
+            'chronic_diseases',
+            'habits',
+            'current_prescription',
+            'is_pregnant',
+        ]
+
+        # Create a list to store history records for batch creation
+        history_records = []
+
+        # Check which tracked fields are being updated
+        for field in TRACKED_FIELDS:
+            if field in validated_data and getattr(instance, field) != validated_data[field]:
+                # Create a history record for the field
+                history_records.append(
+                    PatientAccountHistory(
+                        patient=instance,
+                        field=field,
+                        value=getattr(instance, field)  # Old value
+                    )
+                )
+
+        # Bulk create history records (if any)
+        if history_records:
+            PatientAccountHistory.objects.bulk_create(history_records)
+
+        # Update the instance with the validated data
+        return super().update(instance, validated_data)
     
 class PatientPaymentStatusSerializer(serializers.Serializer):
     reference_key = serializers.CharField(required=True)

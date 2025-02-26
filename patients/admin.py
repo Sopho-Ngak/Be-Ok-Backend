@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from patients.models import (Patient, PatientReport, PatientDependentReport, Appointement, PatientPayment, DependentsPayment,
                              AiConsultationPatient, AIConsultationPatientSymptoms, AIConsultationPatientPrescription, WorkoutRoutine,
-                             TreatmentFeedBack)
+                             TreatmentFeedBack, PatientAccountHistory)
 # Register your models here.
 
 admin.site.register(PatientPayment)
@@ -16,6 +16,12 @@ admin.site.register(AIConsultationPatientPrescription)
 class TreatmentFeedBackAdmin(admin.ModelAdmin):
     list_display = ('patient', 'feedback', 'created_at')
     list_filter = ('created_at',)
+
+# @admin.register(PatientAccountHistory)
+# class PatientAccountHistoryAdmin(admin.ModelAdmin):
+#     list_display = ('patient', 'field', 'created_at')
+#     list_filter = ('created_at',)
+#     search_fields = ('field', 'value')
 
 @admin.register(WorkoutRoutine)
 class WorkoutRoutineAdmin(admin.ModelAdmin):
