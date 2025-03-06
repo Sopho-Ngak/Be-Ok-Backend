@@ -7,6 +7,12 @@ def is_valid_date(date):
         return True
     except ValueError:
         return False
+    
+def is_valid_weekday(weekday):
+    weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    if weekday.lower() in weekdays:
+        return True
+    return False
 
 now = timezone.now()
 

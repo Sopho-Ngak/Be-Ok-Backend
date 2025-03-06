@@ -7,7 +7,8 @@ from patients.models import (
     DependentProfilePicture, Patient, PatientReport, PatientDependentReport, ONLINE, Appointement, CONSULTATION_TYPE,
     PatientPrescriptionForm, DependentsPrescriptionForm, PatientLabTest, AiConsultationPatient,AIConsultationPatientSymptoms,
     AIConsultationPatientPrescription, AiPatientDiagnosis, DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment
-    ,Dependent, WorkoutRoutine, Treatment, TreatmentTracker, TreatmentFeedBack, TreatmentCalendar, FamilyDisease, PatientAccountHistory)
+    ,Dependent, WorkoutRoutine, WorkoutRoutineReminder, DailyWorkoutRoutineTracker, Treatment, TreatmentTracker, TreatmentFeedBack, TreatmentCalendar, FamilyDisease, 
+    PatientAccountHistory)
 from accounts.models import User
 from accounts.serializers import UserInfoSerializer, UserCreateSerializer
 from doctors.models import Doctor, DoctorAvailability
@@ -429,23 +430,80 @@ class PatientRecommendationSerializer(serializers.ModelSerializer):
     #     return serializer.data
     
 
+class DailyWorkoutRoutineTrackerSerializer(serializers.ModelSerializer):
+
+    def validate(self, attrs):
+        if attrs['date'] > timezone.now().date():
+            raise serializers.ValidationError("Date can't be greater than today")
+        return super().validate(attrs)
+    class Meta:
+        model = DailyWorkoutRoutineTracker
+        fields = [
+            'id',
+            'routine',
+            'date',
+            'is_completed',
+            'created_at',
+        ]
+
+    def create(self, validated_data):
+        try:
+            instance = DailyWorkoutRoutineTracker.objects.get(routine=validated_data['routine'], date=validated_data['date'])
+            instance.is_completed = not instance.is_completed
+            instance.save()
+            return instance
+        except DailyWorkoutRoutineTracker.DoesNotExist:
+            return super().create(validated_data)
+
+class WorkoutRoutineReminderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkoutRoutineReminder
+        fields = [
+            'id',
+            'routine',
+            'day',
+            'start_hour',
+            'end_hour',
+            'created_at',
+        ]
+
 class WorkoutRoutineSerializer(serializers.ModelSerializer):
     routine_overview = serializers.SerializerMethodField()
-    reminder_dates = serializers.JSONField(required=False)
+    reminder_day = serializers.CharField(write_only=True, required=False)
+    reminder_start_hour = serializers.TimeField(write_only=True, required=False)
+    reminder_end_hour = serializers.TimeField(write_only=True, required=False)
+    
+
+    reminder_days = WorkoutRoutineReminderSerializer(
+        source="workout_routine_reminder", many=True, read_only=True)
+    tracker = DailyWorkoutRoutineTrackerSerializer(
+        source="workout_routine_tracker", many=True, read_only=True)
+
+    # reminder_dates = serializers.JSONField(required=False)
 
     def validate(self, attrs: dict):
         if attrs['end_date'] < attrs.get('start_date'):
             raise serializers.ValidationError("End date can't be less than start date")
+        
+        if attrs.get('reminder_day') and not common.is_valid_weekday(attrs['reminder_day']):
+            raise serializers.ValidationError("Invalid weekday")
+        
+        if attrs.get('reminder_day') and not attrs.get('reminder_start_hour') or not attrs.get('reminder_end_hour'):
+            raise serializers.ValidationError("Reminder start and end hour are required")
+
+        if attrs.get('reminder_day') and attrs['reminder_start_hour'] >= attrs['reminder_end_hour']:
+            raise serializers.ValidationError("Reminder start hour can't be greater than or equal to end hour")
+        
         # validate if reminder_dates is a list of dates in format "YYYY-MM-DD"
-        if attrs.get('reminder_dates'):
-            if not isinstance(attrs.get('reminder_dates'), list):
-                raise serializers.ValidationError("Reminder dates must be a list of dates")
+        # if attrs.get('reminder_dates'):
+        #     if not isinstance(attrs.get('reminder_dates'), list):
+        #         raise serializers.ValidationError("Reminder dates must be a list of dates")
             
-            if not all(isinstance(item, str) for item in attrs['reminder_dates']):
-                raise serializers.ValidationError("Reminder dates must be a list of dates")
+        #     if not all(isinstance(item, str) for item in attrs['reminder_dates']):
+        #         raise serializers.ValidationError("Reminder dates must be a list of dates")
             
-            if not all(common.is_valid_date(item) for item in attrs['reminder_dates']):
-                raise serializers.ValidationError("Reminder dates must be a list of valid dates in format YYYY-MM-DD")
+        #     if not all(common.is_valid_date(item) for item in attrs['reminder_dates']):
+        #         raise serializers.ValidationError("Reminder dates must be a list of valid dates in format YYYY-MM-DD")
         return super().validate(attrs)
 
     class Meta:
@@ -456,8 +514,11 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
             'routine',
             'start_date',
             'end_date',
-            'reminder_dates',
-            'has_reminder',
+            'tracker',
+            'reminder_days',
+            'reminder_day',
+            'reminder_start_hour',
+            'reminder_end_hour',
             'created_at',
             'routine_overview',
         ]
@@ -468,21 +529,34 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
         else:
             total_days = f"{obj.total_days} days"
 
+
+        if obj.is_completed:
+            status = "completed"
+        elif obj.on_going:
+            status = "ongoing"
+        else:
+            status = "not started"
+
         return {
-            "ongoing": obj.on_going,
+            "status": status,
             "days_used": obj.days_used_till_today,
             "total_days_number": obj.total_days,
             "total_days": total_days,
             "days_remaining_to_start": obj.days_remaining_to_start if obj.days_remaining_to_start > 0 else 0,
             "days_remaining_to_end": obj.total_days - obj.days_used_till_today if obj.total_days - obj.days_used_till_today > 0 else 0,
-            # "status": "completed" if obj.start_date < timezone.now().date() else "ongoing"
         }
     
     def create(self, validated_data: dict):
+        reminder_data: dict[str, str] = {
+            'day': validated_data.pop('reminder_day', None),
+            'start_hour': validated_data.pop('reminder_start_hour', None),
+            'end_hour': validated_data.pop('reminder_end_hour', None),
+        }
         instance: WorkoutRoutine = super().create(validated_data)
-        if validated_data.get("reminder_dates"):
-            instance.has_reminder = True
-            instance.save()
+        if reminder_data.get("day"):
+            reminder_data['day'] = reminder_data['day'].capitalize()
+            WorkoutRoutineReminder.objects.create(routine=instance, **reminder_data)
+
         return instance
 
 class TreatmentSerializer(serializers.ModelSerializer):

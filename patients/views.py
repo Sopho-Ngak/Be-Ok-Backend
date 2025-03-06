@@ -26,7 +26,7 @@ from patients.serializers import (PatientSerializer,AiConsultationPatientSeriali
                                   DependentsPrescriptionFormSerializer, PatientLabTestSerializer, DependentsLabTestSerializer, PatientRecommendationSerializer,
                                   DependentsRecommendationSerializer, TreatmentTrackerSerializer, UpdateAppointmentSerializer, PatientRegistrationSerializer, DependentInfoSerializer, DependentSerializer, AiConsultationInfoPatientSerializer,
                                   GeneralHealgthViewSerialize, WorkoutRoutineSerializer, TreatmentFeedBackSerializer, TreatmentCalendarSerializer, PrescriptionViewsSectionSerializer, LabTestsViewsSectionSerializer, RecommandationViewsSectionSerializer,
-                                  TreatmentSerializer, FamilyDiseaseSerializer)
+                                  TreatmentSerializer, FamilyDiseaseSerializer, DailyWorkoutRoutineTrackerSerializer)
 from doctors.serializers import (
     DoctorInfoSerializer)
 from doctors.permissions import IsDoctor
@@ -215,6 +215,16 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get', 'post', 'patch'], url_path='workout-routine')
     def workout_routine(self, request):
         if request.method == 'POST':
+            if request.query_params.get('set'):
+                if request.query_params.get('set').lower() not in ['tracker']:
+                    return Response({"message": "Invalid query param value"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                serializer = DailyWorkoutRoutineTrackerSerializer(
+                    data=request.data, context={'request': request})
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
             serializer = WorkoutRoutineSerializer(
                 data=request.data, context={'request': request})
             serializer.is_valid(raise_exception=True)
