@@ -62,13 +62,14 @@ class WorkoutRoutine(models.Model):
     routine = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
+    has_quited = models.BooleanField(default=False)
     # reminder_dates = models.JSONField(blank=True, null=True)
     # has_reminder = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def on_going(self):
-        return self.start_date <= timezone.now().date()
+        return self.start_date <= timezone.now().date() and self.end_date >= timezone.now().date()
     
     @property
     def is_completed(self):

@@ -514,6 +514,7 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
             'routine',
             'start_date',
             'end_date',
+            'has_quited',
             'tracker',
             'reminder_days',
             'reminder_day',
@@ -534,6 +535,8 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
             status = "completed"
         elif obj.on_going:
             status = "ongoing"
+        elif obj.has_quited:
+            status = "quited"
         else:
             status = "not started"
 
@@ -555,7 +558,8 @@ class WorkoutRoutineSerializer(serializers.ModelSerializer):
         instance: WorkoutRoutine = super().create(validated_data)
         if reminder_data.get("day"):
             reminder_data['day'] = reminder_data['day'].capitalize()
-            WorkoutRoutineReminder.objects.create(routine=instance, **reminder_data)
+            WorkoutRoutineReminder.objects.update_or_create(routine=instance, day=reminder_data.pop('day'),
+                                                            defaults=reminder_data)
 
         return instance
 
@@ -652,7 +656,7 @@ class TreatmentCalendarSerializer(serializers.ModelSerializer):
 
 class TreatmentFeedBackSerializer(serializers.ModelSerializer):
     patient = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    medications = serializers.SerializerMethodField()
+    # medications = serializers.SerializerMethodField()
 
     class Meta:
         model = TreatmentFeedBack
@@ -660,13 +664,13 @@ class TreatmentFeedBackSerializer(serializers.ModelSerializer):
             'id',
             'patient',
             'feedback',
-            'medications',
+            # 'medications',
             'created_at',
         ]
 
-    def get_medications(self, obj: TreatmentFeedBack):
-        serializer = TreatmentSerializer(obj.medications.all(), many=True)
-        return serializer.data
+    # def get_medications(self, obj: TreatmentFeedBack):
+    #     serializer = TreatmentSerializer(obj.medications.all(), many=True)
+    #     return serializer.data
     
     def create(self, validated_data):
         try:
