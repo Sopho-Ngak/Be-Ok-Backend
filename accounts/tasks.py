@@ -26,7 +26,8 @@ def send_activation_code_via_email(id, reset_pass=False):
         context = {
             'code': user_code.code,
             'user': user_code.user.full_name,
-            'reset_password': reset_pass
+            'reset_password': reset_pass,
+            'current_date': timezone.now().strftime("%d %b, %Y")
         }
         html_content = render_to_string('accounts/verification_code_email_template.html', context=context)
         text_content = strip_tags(html_content)
