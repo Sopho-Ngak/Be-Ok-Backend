@@ -32,3 +32,6 @@ postgres_data
 .vscode
 
 db.json
+
+
+test_api.py

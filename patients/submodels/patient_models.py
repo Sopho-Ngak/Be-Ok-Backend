@@ -62,13 +62,17 @@ class WorkoutRoutine(models.Model):
     routine = models.CharField(max_length=255)
     start_date = models.DateField()
     end_date = models.DateField()
-    reminder_dates = models.JSONField(blank=True, null=True)
-    has_reminder = models.BooleanField(default=False)
+    # reminder_dates = models.JSONField(blank=True, null=True)
+    # has_reminder = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def on_going(self):
         return self.start_date <= timezone.now().date()
+    
+    @property
+    def is_completed(self):
+        return self.end_date < timezone.now().date()
     
     @property
     def days_used_till_today(self):
@@ -89,6 +93,36 @@ class WorkoutRoutine(models.Model):
     
     class Meta:
         ordering = ['-start_date']
+
+
+class WorkoutRoutineReminder(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    routine = models.ForeignKey(WorkoutRoutine, on_delete=models.CASCADE, related_name='workout_routine_reminder')
+    day = models.CharField(max_length=255)
+    start_hour = models.TimeField()
+    end_hour = models.TimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.routine)
+    
+    class Meta:
+        ordering = ['-start_hour']
+
+
+class DailyWorkoutRoutineTracker(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    routine =  models.ForeignKey(WorkoutRoutine, on_delete=models.CASCADE ,related_name='workout_routine_tracker')
+    is_completed = models.BooleanField(default=False)
+    date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.routine)
+    
+    class Meta:
+        ordering = ['-created_at']
+        
 
 
 class Treatment(models.Model):
