@@ -4,7 +4,7 @@ cloudinary==1.43.0
 Django==5.1.7
 django-cors-headers==4.7.0
 django-environ==0.12.0
-jango-storages==1.14.5
+django-storages==1.14.5
 drf-spectacular==0.28.0
 google-auth==2.38.0
 gunicorn==23.0.0
