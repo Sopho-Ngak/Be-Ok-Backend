@@ -43,9 +43,9 @@ html[data-theme="light"],
 
     --button-fg: #fff;
     --button-bg: var(--primary);
-    --button-hover-bg: #609ab6;
+    --button-hover-bg: #4e8d13;
     --default-button-bg: var(--secondary);
-    --default-button-hover-bg: #205067;
+    --default-button-hover-bg: #4e8d13;
     --close-button-bg: #747474;
     --close-button-hover-bg: #333;
     --delete-button-bg: #ba2121;
@@ -916,7 +916,7 @@ a.deletelink:focus, a.deletelink:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 40px;
+    padding: 30px 50px;
     background: var(--header-bg);
     color: var(--header-color);
     overflow: hidden;

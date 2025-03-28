@@ -4,6 +4,7 @@
 *__pycache__*
 .env
 /venv/
+env-upgrade
 **/__pycache__/**
 *__pycache__*
 .env
