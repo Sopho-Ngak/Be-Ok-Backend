@@ -27,8 +27,7 @@ ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://localhost:8000",
-    "https://localhost:[0-9]*", # with arbitrary port number
-    "http://localhost:[0-9]*", # with arbitrary port number unencrypted
+    'https://6902-196-12-137-39.ngrok-free.app',
 ]
 
 class ObjDict(dict):

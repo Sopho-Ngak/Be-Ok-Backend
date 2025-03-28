@@ -39,7 +39,8 @@ input[type="submit"], button {
 
     #header {
         flex-direction: column;
-        padding: 15px 30px;
+        padding-bottom: 90px;
+        padding-top: 5px;
         justify-content: flex-start;
     }
 
@@ -465,8 +466,8 @@ input[type="submit"], button {
     /* Layout */
 
     #header, #content, #footer {
-        padding: 15px;
-    }
+        padding-bottom: 90px;
+        padding-top: 5px;
 
     #footer:empty {
         padding: 0;
@@ -995,4 +996,5 @@ input[type="submit"], button {
         font-size: 0.8125rem;
         word-break: break-word;
     }
+}
 }
