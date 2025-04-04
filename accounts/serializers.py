@@ -71,6 +71,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
     # device_type = serializers.CharField(write_only=True, required=False)
     # device_id = serializers.CharField(write_only=True, required=False)
     # device_name = serializers.CharField(write_only=True, required=False)
+    username = serializers.CharField(
+        max_length=255, 
+        required=False, 
+        allow_blank=True,
+        help_text="Optional, if not provided will be generated from email"
+    )
     class Meta:
         model = User
         fields = [
