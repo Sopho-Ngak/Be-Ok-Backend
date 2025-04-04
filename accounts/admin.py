@@ -12,8 +12,8 @@ class UserAdmin(BaseUserAdmin):
     form = UserAdminChangeForm
     add_form = UserAdminCreationForm
 
-    list_display = ('username','full_name', 'email', 'user_type','admin', )
-    list_filter = ('admin','user_type', 'gender','is_active',)
+    list_display = ('username','full_name', 'email', 'user_type','admin', 'created_at')
+    list_filter = ('admin','user_type', 'gender','is_active', 'created_at')
     fieldsets = (
         (None, {'fields': (
             'username',
@@ -93,8 +93,20 @@ class UserAdmin(BaseUserAdmin):
 
 
 admin.site.register(User, UserAdmin)
-admin.site.register(VerificationCode)
+# admin.site.register(VerificationCode)
 admin.site.unregister(Group)
+
+@admin.register(VerificationCode)
+class VerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ('email', 'code', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('email', 'code')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.none()
 
 admin.site.site_header = "Be OK Admin"
 admin.site.site_title = "Admin Portal"

@@ -144,6 +144,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         "Is the user a admin member?"
         # Simplest possible answer: All admins
         return self.admin
+    
+    class Meta:
+        verbose_name = _('user')
+        verbose_name_plural = _('users')
+        ordering = ['-created_at']
 
 
 class VerificationCode(models.Model):
