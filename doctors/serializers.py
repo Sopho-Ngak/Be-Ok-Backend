@@ -46,6 +46,7 @@ class DoctorRegistrationSerializer(UserCreateSerializer):
         document_date = {
             'licence_number': validated_data.pop('license_number'),
             'document': validated_data.pop('document'),
+            'identity_number': validated_data.pop('identity_number', None)  # Optional field
         }
 
         user = super().create(validated_data)
@@ -80,7 +81,8 @@ class DoctorDocumentSerializer(serializers.ModelSerializer):
         model = DoctorDocument
         fields = [
             'id', 
-            'licence_number', 
+            'licence_number',
+            'identity_number',
             'document', 
             'is_approved', 
             'approved_by', 
