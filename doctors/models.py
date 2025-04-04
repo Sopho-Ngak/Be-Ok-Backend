@@ -45,6 +45,12 @@ class DoctorDocument(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     doctor = models.OneToOneField(Doctor, on_delete=models.CASCADE, related_name='doctor_documents')
     licence_number = models.CharField(max_length=100, blank=True, null=True)
+    identity_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text=_("This is optional but recommended for better verification of doctor identity.")
+    )
     document = models.FileField(upload_to='Doctor/documents/')
     is_approved = models.BooleanField(default=False)
     approved_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='approved_doctor_documents', blank=True, null=True)
