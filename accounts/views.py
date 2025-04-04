@@ -163,14 +163,16 @@ class UserViewSet(viewsets.ModelViewSet):
                 verification_code.delete()
                 return Response({'message': 'Verification code expired'}, status=status.HTTP_400_BAD_REQUEST)
 
-            user = verification_code.user
+            user: User = verification_code.user
             user.is_active = True
             user.save()
             token = self.get_serializer().get_token(user)
             verification_code.delete()
             return Response({
                 'refresh': str(token),
-                'access': str(token.access_token)}, status=status.HTTP_200_OK)
+                'access': str(token.access_token),
+                'user_type': user.user_type, 
+                }, status=status.HTTP_200_OK,)
 
         except VerificationCode.DoesNotExist:
             return Response({'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
