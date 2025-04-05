@@ -263,7 +263,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post', 'delete', 'get'], url_path='profile-picture')
     def profile_picture(self, request):
 
-        profile_picture_instance, _ = ProfilePicture.objects.get_or_create(user=request.user)
+        profile_picture_instance, created = ProfilePicture.objects.get_or_create(user=request.user)
 
         if request.method == 'GET':
             serializer = self.get_serializer(profile_picture_instance, context={'request': request})
@@ -277,7 +277,15 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         elif request.method == 'DELETE':
+
+            if created:
+                serializer = self.get_serializer(profile_picture_instance, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+            
+            # delete the current profile picture
             profile_picture_instance.delete()
+
+            # Create a default profile picture if the user deletes the current one
             default_image = ProfilePicture.objects.create(user=request.user)
             serializer = self.get_serializer(default_image, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)

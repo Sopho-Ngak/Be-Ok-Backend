@@ -9,8 +9,8 @@ from patients.models import (
     AIConsultationPatientPrescription, AiPatientDiagnosis, DependentsLabTest, PatientRecommendationForm, DependentsRecommendation, PatientPayment, DependentsPayment
     ,Dependent, WorkoutRoutine, WorkoutRoutineReminder, DailyWorkoutRoutineTracker, Treatment, TreatmentTracker, TreatmentFeedBack, TreatmentCalendar, FamilyDisease, 
     PatientAccountHistory)
-from accounts.models import User
-from accounts.serializers import UserInfoSerializer, UserCreateSerializer
+from accounts.models import ProfilePicture, User
+from accounts.serializers import ProfilePictureSerializer, UserInfoSerializer, UserCreateSerializer
 from doctors.models import Doctor, DoctorAvailability
 from doctors.serializers import MinimumDoctorInfoSerializer, DoctorAvailabilitySerializer
 
@@ -62,9 +62,9 @@ class DependentProfilePictureSerializer(serializers.ModelSerializer):
     class Meta:
         model = DependentProfilePicture
         fields = [
-            'id',
+            # 'id',
             'profile_picture',
-            'created_at',
+            # 'created_at',
         ]
 
 class DependentSerializer(serializers.ModelSerializer):
@@ -171,6 +171,7 @@ class PatientInfoSerializer(serializers.ModelSerializer):
     personal_information = serializers.SerializerMethodField()
     dependents_profile = DependentInfoSerializer(
         source="dependents", many=True, read_only=True)
+    profile_completeness_percentage = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Patient
@@ -189,6 +190,7 @@ class PatientInfoSerializer(serializers.ModelSerializer):
             "has_family_members",
             "location",
             'created_at',
+            'profile_completeness_percentage',
             'personal_information',
             'dependents_profile',
         ]
@@ -198,6 +200,49 @@ class PatientInfoSerializer(serializers.ModelSerializer):
         serializer = UserInfoSerializer(user, context=self.context)
 
         return serializer.data
+
+    def get_profile_completeness_percentage(self, obj: Patient):
+        """
+        Calculate the profile completeness percentage based on the fields filled in the model
+        """
+
+        user_instance: User = self.context['request'].user
+        total_fields = 10 # Total number of fields to check for completeness
+        filled_fields = 0
+        if obj.blood_group:
+            filled_fields += 1
+        if obj.alergies:
+            filled_fields += 1
+        if obj.chronic_diseases:
+            filled_fields += 1
+        if obj.habits:
+            filled_fields += 1
+        # if obj.current_prescription:
+        #     filled_fields += 1
+        # if obj.current_treatment: # is_pregnant is a boolean field
+        #     filled_fields += 1
+        if obj.identity_number:
+            filled_fields += 1
+        # if obj.location: # location is a CharField
+            # filled_fields += 1
+        # if obj.current_treatment:
+        #     filled_fields += 1 # Uncomment if you want to include current_treatment in completeness check
+        
+        # personal information
+        if user_instance.phone_number:
+            filled_fields += 1
+        if user_instance.address:
+            filled_fields += 1
+        if user_instance.date_of_birth:
+            filled_fields += 1
+        if user_instance.about_me:
+            filled_fields += 1
+        if user_instance.marital_status:
+            filled_fields += 1
+        # Calculate percentage
+        percentage = (filled_fields / total_fields) * 100
+        # Return the percentage as an integer
+        return int(percentage)
     
 
 class MinumumPatientInfoSerializer(PatientInfoSerializer):
@@ -1096,7 +1141,21 @@ class PatientSerializer(serializers.ModelSerializer):
 
 
 class PatientEditProfileSerializer(serializers.ModelSerializer):
-    id = serializers.UUIDField(read_only=True)
+    # id = serializers.UUIDField(read_only=True)
+    personal_information =  serializers.SerializerMethodField()
+    full_name = serializers.CharField(write_only=True, required=False, max_length=255)
+    phone_number = serializers.CharField(write_only=True, required=False, max_length=15)
+    address = serializers.CharField(write_only=True, required=False, max_length=255)
+    about_me = serializers.CharField(max_length=None, required=False, write_only=True)
+    gender = serializers.ChoiceField(required=False, choices=User.GENDER_CHOICES, write_only=True)
+    marital_status = serializers.ChoiceField(
+        required=False, choices=User.MARITAL_STATUS_CHOICES,
+        write_only=True
+    )
+    date_of_birth = serializers.DateField(
+        write_only=True, required=False, allow_null=True
+    )  # Allow null for existing users without DOB
+    profile_image = serializers.ImageField(write_only=True, required=False)
 
     def validate(self, attrs):
         if self.context['request'].user.gender == User.MALE:
@@ -1108,6 +1167,7 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             'id',
+            'identity_number',  # Keep this field for backward compatibility
             'patient_username',
             'blood_group',
             'weight',
@@ -1116,27 +1176,78 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
             'habits',
             'current_prescription',
             'is_pregnant',
+            'personal_information',
+            # Fields from User model
+            'full_name',
+            'phone_number',
+            'address',
+            'about_me',
+            'gender',
+            'marital_status',
+            'date_of_birth',
+            # update profile picture
+            'profile_image',
+
         ]
+
+    def get_personal_information(self, obj: Patient):
+        """
+        Get the patient info for the serializer, used to return the user info
+        """
+        serializer = UserInfoSerializer(obj.patient_username, context=self.context)
+        return serializer.data
 
     def update(self, instance: Patient, validated_data: dict):
         # List of fields to track in PatientAccountHistory
-        TRACKED_FIELDS = [
-            'weight',
-            'blood_group',
-            'alergies',
-            'chronic_diseases',
-            'habits',
-            'current_prescription',
-            'is_pregnant',
+        # TRACKED_FIELDS = [
+        #     'weight',
+        #     'blood_group',
+        #     'alergies',
+        #     'chronic_diseases',
+        #     'habits',
+        #     'current_prescription',
+        #     'is_pregnant',
+        # ]
+
+        USER_FIELDS = [
+            'full_name',
+            'phone_number',
+            'address',
+            'about_me',
+            'gender',
+            'marital_status',
+            'date_of_birth',
         ]
 
         # Create a list to store history records for batch creation
         history_records = []
+        user_data = {}
 
         # Check which tracked fields are being updated
-        for field in TRACKED_FIELDS:
-            if field in validated_data and getattr(instance, field) != validated_data[field]:
+        for field in validated_data.keys():
+            if field == 'profile_image':
+                # accept on image 
+                profile_picture_instance, created = ProfilePicture.objects.get_or_create(
+                    user=instance.patient_username
+                )
+                serializer = ProfilePictureSerializer(
+                    profile_picture_instance, 
+                    data={'image': validated_data['profile_image']},
+                    partial=True,
+                    context=self.context
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                # Skip profile_image from history tracking
+                continue
+
+            if field not in USER_FIELDS \
+                    and getattr(instance, field) != validated_data[field]:
                 # Create a history record for the field
+                if not getattr(instance, field):
+                    continue
+
                 history_records.append(
                     PatientAccountHistory(
                         patient=instance,
@@ -1144,10 +1255,38 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
                         value=getattr(instance, field)  # Old value
                     )
                 )
+            elif field in USER_FIELDS \
+                    and getattr(instance.patient_username, field) != validated_data.get(field):
+
+                user_data[field] = validated_data[field]
+
+                if not getattr(instance.patient_username, field):
+                    # Skip if the old value is None (not set)
+                    continue
+
+                history_records.append(
+                    PatientAccountHistory(
+                        patient=instance,
+                        field=field,
+                        value=getattr(instance.patient_username, field)  # Old value from User model
+                    )
+                )
 
         # Bulk create history records (if any)
         if history_records:
             PatientAccountHistory.objects.bulk_create(history_records)
+
+        if user_data:
+            # Update the User model associated with the Patient
+            serialize = UserInfoSerializer(
+                instance.patient_username, 
+                data=user_data, 
+                partial=True,  # Allow partial update
+                context=self.context
+            )
+            serialize.is_valid(raise_exception=True)
+                # Save the user instance
+            serialize.save()
 
         # Update the instance with the validated data
         return super().update(instance, validated_data)
