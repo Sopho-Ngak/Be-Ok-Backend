@@ -158,9 +158,9 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         model = ProfilePicture
         fields = [
             'id',
-            'user',
+            # 'user',
             'image',
-            'created_at',
+            # 'created_at',
         ]
 
 
