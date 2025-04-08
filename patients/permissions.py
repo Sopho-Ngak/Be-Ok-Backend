@@ -3,7 +3,7 @@ from accounts.models import User
 from patients.models import Patient
 
 class IsPatient(BasePermission):
-    message = "Only BeOk patient can perform this action"
+    message = "Only patient can perform this action. Check the current user type"
 
     def has_permission(self, request, view):
         if request.user.user_type == User.PATIENT:

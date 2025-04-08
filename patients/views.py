@@ -105,6 +105,11 @@ class PatientViewSet(viewsets.ModelViewSet):
                 self.permission_classes += [IsDoctor]
         elif self.action == 'register':
             self.permission_classes = [AllowAny]
+        elif self.action == 'patient_profile':
+            if self.request.method == 'PATCH':
+                self.permission_classes = [IsAuthenticated, IsPatient]
+            # elif self.request.method == 'GET':
+            #     self.permission_classes = [IsAuthenticated, IsPatient]
         # elif self.action == 'get_paid_result':
         #     self.permission_classes = [IsAuthenticated, IsPatient]
         return super().get_permissions()
@@ -112,13 +117,32 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='registration')
     def register(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        serializer.instance.patient_username.set_password(serializer.validated_data.get('password'))
-        serializer.instance.patient_username.save()
+        if serializer.is_valid():
+            serializer.save()
+            serializer.instance.patient_username.set_password(serializer.validated_data.get('password'))
+            serializer.instance.patient_username.save()
 
-        patient_serializer = PatientInfoSerializer(serializer.instance, context={'request': request})
-        return Response(patient_serializer.data, status=status.HTTP_201_CREATED)
+            patient_serializer = PatientInfoSerializer(serializer.instance, context={'request': request})
+            
+            return Response({
+                "successMessage": "Account created successfully",
+                "status_code": status.HTTP_201_CREATED,
+                "data": patient_serializer.data
+                }, status=status.HTTP_201_CREATED)
+        
+        error_data = ''
+        if serializer.errors.get('email'):
+            error_data += 'Email already exists. '
+        if serializer.errors.get('phone_number'):
+            error_data += 'Phone number already exists. '
+        if serializer.errors.get('gender'):
+            error_data += "Invalid gender. "
+        if serializer.errors.get('marital_status'):
+            error_data += "Invalid marital status. "
+        if serializer.errors.get('date_of_birth'):
+            error_data += "Invalid date of birth. "
+
+        return Response({"errorMessage": error_data}, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post', 'get', 'patch'], url_path='dependent')
     def patient_dependent(self, request):
@@ -203,12 +227,46 @@ class PatientViewSet(viewsets.ModelViewSet):
                 instance = Patient.objects.get(patient_username=request.user)
                 serializer = self.get_serializer(
                     instance, data=request.data, partial=True, context={'request': request})
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({
+                        "successMessage":"Profile updated successfully",
+                        "status_code": status.HTTP_200_OK,
+                        "data": serializer.data
+                        }, status=status.HTTP_200_OK)
+                                
+                error_data = ''
+                if serializer.errors.get('blood_group'):
+                    error_data += "Invalid blood group. "
+                if serializer.errors.get("weight"):
+                    error_data += "Invalid weight number. "
+                if serializer.errors.get("gender"):
+                    error_data +="Invalid gender. "
+                if serializer.errors.get("marital_status"):
+                    error_data += "Invalid marital status. "
+                if serializer.errors.get("date_of_birth"):
+                    error_data += "Invalid date of birth format. "
+                if serializer.errors.get("phone_number"):
+                    error_data += "Phone number already exists. "
+                if serializer.errors.get("is_pregnant"):
+                    error_data += "You cannot be pregnant as you are a male. "
+                if serializer.errors.get("profile_image"):
+                    error_data += "Invalid profile image. "
+                
+                if serializer.errors.get("height"):
+                    error_data += "Invalid height number. "
+
+                
+
+                return Response({
+                    "errorMessage": error_data,
+                    "status_code":status.HTTP_400_BAD_REQUEST
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+
             except Patient.DoesNotExist:
                 return Response(
-                    {"message": settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIS},
+                    {"errorMessage": settings.PATIENT_CONSTANTS.messages.PATIENT_DOES_NOT_EXIST},
                     status=status.HTTP_404_NOT_FOUND
                 )
             
