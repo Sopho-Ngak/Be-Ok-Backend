@@ -68,7 +68,7 @@ class DependentProfilePictureSerializer(serializers.ModelSerializer):
         ]
 
 class DependentSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.FileField(write_only=True, required=False)
+    profile_picture = serializers.ImageField(write_only=True, required=False)
     location_as_mine = serializers.BooleanField(write_only=True, required=False)
     class Meta:
         model = Dependent
@@ -206,7 +206,6 @@ class PatientInfoSerializer(serializers.ModelSerializer):
         Calculate the profile completeness percentage based on the fields filled in the model
         """
 
-        user_instance: User = self.context['request'].user
         total_fields = 10 # Total number of fields to check for completeness
         filled_fields = 0
         if obj.blood_group:
@@ -229,15 +228,15 @@ class PatientInfoSerializer(serializers.ModelSerializer):
         #     filled_fields += 1 # Uncomment if you want to include current_treatment in completeness check
         
         # personal information
-        if user_instance.phone_number:
+        if obj.patient_username.phone_number:
             filled_fields += 1
-        if user_instance.address:
+        if obj.patient_username.address:
             filled_fields += 1
-        if user_instance.date_of_birth:
+        if obj.patient_username.date_of_birth:
             filled_fields += 1
-        if user_instance.about_me:
+        if obj.patient_username.about_me:
             filled_fields += 1
-        if user_instance.marital_status:
+        if obj.patient_username.marital_status:
             filled_fields += 1
         # Calculate percentage
         percentage = (filled_fields / total_fields) * 100
