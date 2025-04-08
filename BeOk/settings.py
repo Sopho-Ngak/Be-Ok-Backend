@@ -78,7 +78,7 @@ INSTALLED_APPS += CUSTOM_APPS
 
 MIDDLEWARE = [
     # MiddlewareToCaptureRequestHeader
-    # 'utils.customer_middle_ware.MiddlewareToCaptureRequestHeader',
+    'utils.customer_middle_ware.MiddlewareToCaptureRequestHeader',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware', # corsheaders
