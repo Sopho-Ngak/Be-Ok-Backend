@@ -4,7 +4,7 @@ from django.db import models
 
 from .patient_models import Patient
 from accounts.models import User
-from .utils import upload_path, medical_form_upload_path,lab_test_upload_path, CONSULTATION_TYPE, AI_CONSULTATION, CONSULTATION_STATUS
+from .utils import upload_path, dependent_upload_path, medical_form_upload_path,lab_test_upload_path, CONSULTATION_TYPE, AI_CONSULTATION, CONSULTATION_STATUS
 from doctors.models import Doctor
 
 
@@ -44,7 +44,7 @@ class Dependent(models.Model):
 class DependentProfilePicture(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(Dependent, on_delete=models.CASCADE, related_name='dependent_profile_picture')
-    profile_picture = models.ImageField(upload_to=upload_path, default='default/default_profile_picture.png')
+    profile_picture = models.ImageField(upload_to=dependent_upload_path, default='default/default_profile_picture.png')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

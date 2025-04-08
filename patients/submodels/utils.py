@@ -1,3 +1,5 @@
+
+
 def medical_form_upload_path(instance, filename):
     return '/'.join(['medical_forms', str(instance.patient_username.patient_username), filename])
 
@@ -9,6 +11,9 @@ def lab_test_upload_path(instance, filename):
 
 def upload_path(instance, filename):
     return '/'.join(['profile_pictures/dependents', str(instance.user.username), filename])
+
+def dependent_upload_path(instance, filename):
+    return '/'.join(['profile_pictures/dependents', f"{instance.user.patient.patient_username} - {instance.user.full_name}", filename])
 
 
 
