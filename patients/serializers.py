@@ -1157,9 +1157,10 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
     profile_image = serializers.ImageField(write_only=True, required=False)
 
     def validate(self, attrs):
-        if self.context['request'].user.gender == User.MALE:
-            if attrs.get('is_pregnant'):
-                raise serializers.ValidationError("You can't be pregnant")
+        if self.context['request'].user.gender == User.MALE :
+            if attrs.get('is_pregnant') == True \
+                or attrs.get('is_pregnant') == True and attrs.get('gender')== User.MALE:
+                raise serializers.ValidationError({"is_pregnant": "You can't be pregnant"})
         return super().validate(attrs)
     
     class Meta:
@@ -1286,6 +1287,15 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
             serialize.is_valid(raise_exception=True)
                 # Save the user instance
             serialize.save()
+
+        # check if phone number already exist in db
+        if validated_data.get('phone_number'):
+            if User.objects.filter(phone_number=validated_data['phone_number']).exists():
+                raise serializers.ValidationError({
+                    "errorMessage": "Phone number already exist",
+                    "status_code": 400
+                    })
+
 
         # Update the instance with the validated data
         return super().update(instance, validated_data)
