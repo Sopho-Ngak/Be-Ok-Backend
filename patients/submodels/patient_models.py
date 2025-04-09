@@ -25,7 +25,7 @@ class Patient(models.Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     patient_username = models.OneToOneField(User, on_delete=models.CASCADE)
-    identity_number = models.CharField(max_length=50, blank=True, null=True)
+    identity_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     blood_group = models.CharField(choices=BLOOD_GROUP_CHOICES, default=BLOOD_GROUP_CHOICES[0][1],max_length=10, blank=True, null=True)
     alergies = models.TextField( blank=True, null=True)
     chronic_diseases = models.TextField( blank=True, null=True)
