@@ -148,9 +148,41 @@ class PatientViewSet(viewsets.ModelViewSet):
     def patient_dependent(self, request):
         if request.method == 'POST':
             serializer = DependentSerializer(data=request.data, context={'request': request})
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "successMessage": "Dependent created successfully",
+                    "status_code": status.HTTP_201_CREATED,
+                    "data": serializer.data}, status=status.HTTP_201_CREATED)
+            
+            error_data = ''
+            serializer_errors: dict = serializer.errors
+            if serializer_errors.get('full_name'):
+                error_data += "Full name is required. "
+            if serializer_errors.get('relationship'):
+                error_data += "Relationship is required. "
+            if serializer_errors.get('age'):
+                if not isinstance(request.data.get('age'), int):
+                    error_data += "Age should be an integer. "
+                elif 'required' in serializer_errors['age'][0]:
+                    error_data += "Age is required. "
+
+                else:
+                    error_data += f"{serializer_errors['age'][0]}. "
+            if serializer_errors.get('gender') :
+                if 'required' in serializer_errors['gender'][0]:
+                    error_data += "gender is required. "
+                else:
+                    error_data += f"gender {serializer_errors['gender'][0]}. "
+            if serializer_errors.get('profile_picture'):
+                error_data += f"{serializer_errors['profile_picture'][0]}. "
+
+            
+            return Response({
+                "errorMessage": error_data,
+                "status_code": status.HTTP_400_BAD_REQUEST
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         
         elif request.method == 'GET':
             if request.query_params.get('id'):
@@ -252,7 +284,6 @@ class PatientViewSet(viewsets.ModelViewSet):
                     error_data += "You cannot be pregnant as you are a male. "
                 if serializer.errors.get("profile_image"):
                     error_data += "Invalid profile image. "
-                
                 if serializer.errors.get("height"):
                     error_data += "Invalid height number. "
 

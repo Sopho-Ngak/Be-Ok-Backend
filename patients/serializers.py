@@ -69,7 +69,7 @@ class DependentProfilePictureSerializer(serializers.ModelSerializer):
 
 class DependentSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(write_only=True, required=False)
-    location_as_mine = serializers.BooleanField(write_only=True, required=False)
+    location_as_mine = serializers.BooleanField(write_only=True, required=False, default=False)
     class Meta:
         model = Dependent
         fields = [
@@ -97,9 +97,10 @@ class DependentSerializer(serializers.ModelSerializer):
         dependent = super().create(validated_data)
         
         if profile_picture:
-            DependentProfilePicture.objects.create(user=dependent, profile_picture=profile_picture)
-        else:
-            DependentProfilePicture.objects.create(user=dependent)
+            DependentProfilePicture.objects.update_or_create(
+                user=dependent,
+                defaults={'profile_picture': profile_picture}
+                )
 
         return dependent
             
@@ -1156,11 +1157,17 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
     )  # Allow null for existing users without DOB
     profile_image = serializers.ImageField(write_only=True, required=False)
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict):
         if self.context['request'].user.gender == User.MALE :
             if attrs.get('is_pregnant') == True \
                 or attrs.get('is_pregnant') == True and attrs.get('gender')== User.MALE:
                 raise serializers.ValidationError({"is_pregnant": "You can't be pregnant"})
+
+        # check if phone number already exist in db
+        if attrs.get('phone_number'):
+            if User.objects.filter(phone_number=attrs.get('phone_number')).exists():
+                raise serializers.ValidationError({
+                    "phone_number": "Phone number already existd"})
         return super().validate(attrs)
     
     class Meta:
@@ -1287,15 +1294,6 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
             serialize.is_valid(raise_exception=True)
                 # Save the user instance
             serialize.save()
-
-        # check if phone number already exist in db
-        if validated_data.get('phone_number'):
-            if User.objects.filter(phone_number=validated_data['phone_number']).exists():
-                raise serializers.ValidationError({
-                    "errorMessage": "Phone number already exist",
-                    "status_code": 400
-                    })
-
 
         # Update the instance with the validated data
         return super().update(instance, validated_data)
