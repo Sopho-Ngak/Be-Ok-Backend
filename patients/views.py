@@ -279,7 +279,7 @@ class PatientViewSet(viewsets.ModelViewSet):
                 if serializer.errors.get("date_of_birth"):
                     error_data += "Invalid date of birth format. "
                 if serializer.errors.get("phone_number"):
-                    error_data += "Phone number already exists. "
+                    error_data += serializer.errors["phone_number"][0]
                 if serializer.errors.get("is_pregnant"):
                     error_data += "You cannot be pregnant as you are a male. "
                 if serializer.errors.get("profile_image"):
