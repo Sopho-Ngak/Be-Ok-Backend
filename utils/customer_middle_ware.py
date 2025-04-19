@@ -27,7 +27,7 @@ class MiddlewareToCaptureRequestHeader:
             try:
                 json_body = json.loads(response.content)
                 pretty = json.dumps(json_body, indent=2)
-                print("📤 JSON Response:\n", pretty)
+                # print("📤 JSON Response:\n", pretty)
             except Exception as e:
                 print("⚠️ Could not parse JSON response:", e)
         else:

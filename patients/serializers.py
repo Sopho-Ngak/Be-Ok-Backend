@@ -1143,10 +1143,16 @@ class PatientSerializer(serializers.ModelSerializer):
 class PatientEditProfileSerializer(serializers.ModelSerializer):
     # id = serializers.UUIDField(read_only=True)
     personal_information =  serializers.SerializerMethodField()
-    full_name = serializers.CharField(write_only=True, required=False, max_length=255)
-    phone_number = serializers.CharField(write_only=True, required=False, max_length=15)
-    address = serializers.CharField(write_only=True, required=False, max_length=255)
-    about_me = serializers.CharField(max_length=None, required=False, write_only=True)
+    full_name = serializers.CharField(write_only=True, required=False, max_length=255, trim_whitespace=True)
+    phone_number = serializers.CharField(
+        write_only=True, required=False, max_length=15, allow_blank=True, trim_whitespace=True, allow_null=True
+        )
+    address = serializers.CharField(
+        write_only=True, required=False, max_length=255, allow_blank=True, trim_whitespace=True, allow_null=True
+        )
+    about_me = serializers.CharField(
+        max_length=None, required=False, write_only=True, allow_blank=True, trim_whitespace=True
+        )
     gender = serializers.ChoiceField(required=False, choices=User.GENDER_CHOICES, write_only=True)
     marital_status = serializers.ChoiceField(
         required=False, choices=User.MARITAL_STATUS_CHOICES,
@@ -1165,9 +1171,12 @@ class PatientEditProfileSerializer(serializers.ModelSerializer):
 
         # check if phone number already exist in db
         if attrs.get('phone_number'):
+            if attrs.get('phone_number') == '':
+                raise serializers.ValidationError({
+                    "phone_number": "Phone number can't be empty or null. "})
             if User.objects.filter(phone_number=attrs.get('phone_number')).exists():
                 raise serializers.ValidationError({
-                    "phone_number": "Phone number already existd"})
+                    "phone_number": "Phone number already existd. "})
         return super().validate(attrs)
     
     class Meta:
