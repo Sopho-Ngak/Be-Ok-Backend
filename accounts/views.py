@@ -42,9 +42,29 @@ class UserLogin(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='login')
     def user_login(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
-    
+        if serializer.is_valid():
+            return Response({
+                "successMessage": "Login successful",
+                "status_code": status.HTTP_200_OK,
+                "refresh": str(serializer.get_token(serializer.user)),
+                "access": str(serializer.get_token(serializer.user).access_token),
+                **serializer.validated_data
+                }, status=status.HTTP_200_OK)
+        
+        error_data = ''
+        
+        if serializer.errors.get('username'):
+            error_data += 'usename filed is required. '
+        if serializer.errors.get('password'):
+            error_data += 'password is required. '
+        if serializer.errors.get('login_error'):
+            error_data += serializer.errors.get('login_error')[0]
+
+        return Response({
+            "errorMessage": error_data,
+            "status_code": status.HTTP_400_BAD_REQUEST,
+        }, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['post'], url_path='google-login')
     def google_login(self, request):
 

@@ -1,19 +1,35 @@
 from random import choice
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
-from rest_framework import serializers
+from rest_framework import serializers, exceptions
 from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
+from django.contrib.auth import authenticate
 
 from accounts.models import User, VerificationCode, ProfilePicture
 from accounts.tasks import send_activation_code_via_email
 from utils.generate_code import get_random_code
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    default_error_messages = {
-        'no_active_account': 'User not found or invalid credentials (Make sure your account is activated)',
-    }
+
     def validate(self, attrs):
-        data = super().validate(attrs)
+        data = {}
+        authenticate_kwargs = {
+            self.username_field: attrs[self.username_field],
+            "password": attrs["password"],
+        }
+        try:
+            authenticate_kwargs["request"] = self.context["request"]
+        except KeyError:
+            pass
+
+        self.user = authenticate(**authenticate_kwargs)
+
+        if not self.user or not self.user.is_active:
+            raise serializers.ValidationError({
+                "login_error": "Email/username or password is incorrect",
+                }
+            )
+
         data['user_short_detail'] = {
             'id': self.user.id,
             'username': self.user.username,
