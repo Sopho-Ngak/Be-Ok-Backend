@@ -22,7 +22,7 @@ class HospitalViewSet(viewsets.ModelViewSet):
 
             if not self.queryset.exists():
                 return Response({
-                    "errorMessage": "Hospital not found",
+                    "errorMessage": "Hospital not found with the given id",
                     "status_code": status.HTTP_404_NOT_FOUND,
                 }, status=status.HTTP_404_NOT_FOUND)
 
@@ -49,5 +49,9 @@ class HospitalViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
         
         serializer = HospitalSerializer(self.queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "successMessage": "Hospitals fetched successfully",
+            "status_code": status.HTTP_200_OK,
+            "date":serializer.data
+            }, status=status.HTTP_200_OK)
     
